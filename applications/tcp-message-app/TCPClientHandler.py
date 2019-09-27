@@ -8,7 +8,7 @@ provides a response that is printed in console
 import socket
 import pickle
 
-class TCPClientHandler(object):
+class TCPClientHandler:
     def __init__(self, host, port):
         self.host = host
         self.port = port
@@ -41,6 +41,90 @@ class TCPClientHandler(object):
         server_msg = server_data['msg']
         return (client_id, server_msg)
 
+def print_menu(self):
+        """Prints menu option to console
+
+        """
+        print("""
+        ****** TCP Message App ******
+        -----------------------
+        Options Available:
+        1. Get user list
+        2. Sent a message
+        3. Get my messages
+        4. Create a new channel
+        5. Chat in a channel with your friends
+        6. Diconnect from server
+        """)
+
+    def get_menu_option(self):
+        """Retrieve responses from the server
+
+        """
+        while True:
+            option = int(input("Your option <enter a number>: "))
+            if 1 <= option <= 6:
+                return option
+
+    def get_user_list(self):
+        """Gets a list of active users from server.
+
+        """
+        data = ("1","")
+        self.handler_send(data)
+        (client_id, client_list) = self.handler_get()
+        print("Client List")
+        for i in client_list:
+            print(i, ": ", client_list[i])
+
+    def send_message(self):
+        """Sends a message
+
+        """
+        pass
+
+    def get_messages(self):
+        """Retrieves user's messages
+
+        """
+        pass
+
+    def create_new_channel(self):
+        """Creates a new channel
+
+        """
+        pass
+
+    def join_new_channel(self):
+        """Joins an existing p2p channel
+
+        """
+        pass
+
+    def handle_menu_option(self, option):
+        """Handles user option
+
+        """
+        if option == 1:
+            # get user list
+            return self.get_user_list()
+        elif option == 2:
+            # send a message
+            return self.send_message()
+        elif option == 3:
+            # get my messages
+            return self.get_messages()
+        elif option == 4:
+            # Create a new channel
+            return self.create_new_channel()
+        elif option == 5:
+            # Chat in a new channel with your friends
+            return self.join_new_channel()
+        elif option == 6:
+            # Disconnect from server
+            raise DisconnectSignal()
+
+
 
     def run(self):
         try:
@@ -67,3 +151,20 @@ class TCPClientHandler(object):
         except socket.error as socket_exception:
             print(socket_exception) # An exception ocurred at this point
         client.close()
+    def start(self):
+        # establish connection with server
+        self.client.connect()
+
+        # Logs in to server.
+        # client_msg = ("0", self.client_name)
+        client_msg = self.client.client_name
+        data = {"msg": client_msg, "sent_on": datetime.datetime.now(), "client_id": None, "option": -1}
+        self.handler_send(data)
+        response = self.handler_get()
+        self.client_id = response["client_id"]
+        print("Successfully connected to server with IP: {} and port: {}".format(self.ip, self.port))
+        print("Your client info is:")
+        print("Client Name: ", self.client_name)
+        print("Client ID: ", self.client_id)
+
+        print(response[msg])#debug

@@ -21,7 +21,9 @@ from helpers import (
     DisconnectSignal
 )
 import socket
+import pickle
 import datetime
+
 from TCPClientHandler import TCPClientHandler
 
 # def SocketOperationHandler(func):
@@ -33,7 +35,7 @@ from TCPClientHandler import TCPClientHandler
 #         self.socket.close()
 #     return wrapper
 
-class Client(TCPClientHandler):
+class Client:
 
     def __init__(self, ip=None, port=None):
         if not ip:
@@ -42,34 +44,22 @@ class Client(TCPClientHandler):
         if not port:
             # Prompt user for port
             port = getPortFromUser("Enter the server port:")
-        # super(Client, self).__init__(host=ip, port=port) # python2 compat
-        # 
+        self.ip = ip
+        self.port = port
         self.client_name = input("Your id key (i.e your name): ")
         self.client_id = None
-        super().__init__(ip, port)
+        self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     def connect(self):
         """Connects to the server
         
         """
         # Connects to the server using its host IP and port
-        self.tcp_socket.connect((self.host, self.port))
+        self.tcp_socket.connect((self.ip, self.port))
 
-        # Logs in to server.
-        # client_msg = ("0", self.client_name)
-        client_msg = self.client_name
-        data = {"msg": client_msg, "sent_on": datetime.datetime.now(), "client_id": None}
-        self.handler_send(data)
-        response = self.handler_get()
-        self.client_id = response["client_id"]
-        print("Successfully connected to server with IP: {} and port: {}".format(self.ip, self.port))
-        print("Your client info is:")
-        print("Client Name: ", self.client_name)
-        print("Client ID: ", self.client_id)
-
-        print(response[msg])#debug
         
-    def _disconnect(self):
+        
+    def disconnect(self):
         self.tcp_socket.close()
         
     def send(self, data):
@@ -77,96 +67,18 @@ class Client(TCPClientHandler):
 
         """
         
-        self.handler_send(data)
+        data_serialized = pickle.dumps(data)
+        self.tcp_socket.send(data_serialized)
 
-    def get(self):
+    def retrieve(self):
         """retrieve responses from the server
 
         """
-        pass
-
-    def print_menu(self):
-        """Prints menu option to console
-
-        """
-        print("""
-        ****** TCP Message App ******
-        -----------------------
-        Options Available:
-        1. Get user list
-        2. Sent a message
-        3. Get my messages
-        4. Create a new channel
-        5. Chat in a channel with your friends
-        6. Diconnect from server
-        """)
-
-    def get_menu_option(self):
-        """Retrieve responses from the server
-
-        """
-        while True:
-            option = int(input("Your option <enter a number>: "))
-            if 1 <= option <= 6:
-                return option
-
-    def get_user_list(self):
-        """Gets a list of active users from server.
-
-        """
-        data = ("1","")
-        self.handler_send(data)
-        (client_id, client_list) = self.handler_get()
-        print("Client List")
-        for i in client_list:
-            print(i, ": ", client_list[i])
-
-    def send_message(self):
-        """Sends a message
-
-        """
-        pass
-
-    def get_messages(self):
-        """Retrieves user's messages
-
-        """
-        pass
-
-    def create_new_channel(self):
-        """Creates a new channel
-
-        """
-        pass
-
-    def join_new_channel(self):
-        """Joins an existing p2p channel
-
-        """
-        pass
-
-    def handle_menu_option(self, option):
-        """Handles user option
-
-        """
-        if option == 1:
-            # get user list
-            return self.get_user_list()
-        elif option == 2:
-            # send a message
-            return self.send_message()
-        elif option == 3:
-            # get my messages
-            return self.get_messages()
-        elif option == 4:
-            # Create a new channel
-            return self.create_new_channel()
-        elif option == 5:
-            # Chat in a new channel with your friends
-            return self.join_new_channel()
-        elif option == 6:
-            # Disconnect from server
-            raise DisconnectSignal()
+         # Server response is received. However, we need to take care of data size
+        server_response = self.tcp_socket.recv(4096)
+        # Desearializes the data.
+        server_data = pickle.loads(server_response)
+        return server_data
 
     def run(self):
         """Runs the client
@@ -187,5 +99,5 @@ class Client(TCPClientHandler):
 
 if __name__ == '__main__':
     client = Client()
-    client.run()
-    client.disconnect()
+    client_wrapper = TCPClientHandler(client)
+    client_wrapper.start()
