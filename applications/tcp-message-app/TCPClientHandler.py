@@ -6,42 +6,15 @@ provides a response that is printed in console
 """
 # The only socket library allowed for this assigment
 import socket
-import pickle
-
+import datetime
+from helpers import (
+    DisconnectSignal
+)
 class TCPClientHandler:
-    def __init__(self, host, port):
-        self.host = host
-        self.port = port
-        # The server port
-        # Creates the client socket
-        # AF_INET refers to the address family ipv4.
-        # The SOCK_STREAM means connection oriented TCP protocol.
-        self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    def __init__(self, client):
+        self.client = client
 
-    def test(self):
-        print("Host and port", self.host, self.port)
-
-    def handler_send(self, data):
-        """Prepare, serializes and send data to the server
-
-        """
-        data_serialized = pickle.dumps(data)
-        self.tcp_socket.send(data_serialized)
-
-    def handler_get(self):
-        """Retrieves response from server and parses output
-
-        """
-        # Server response is received. However, we need to take care of data size
-        server_response = self.tcp_socket.recv(4096)
-        # Desearializes the data.
-        server_data = pickle.loads(server_response)
-        # Get all the values in the data dictionary
-        client_id = server_data['client_id'] # the client id assigned by the server
-        server_msg = server_data['msg']
-        return (client_id, server_msg)
-
-def print_menu(self):
+    def print_menu(self):
         """Prints menu option to console
 
         """
@@ -54,7 +27,7 @@ def print_menu(self):
         3. Get my messages
         4. Create a new channel
         5. Chat in a channel with your friends
-        6. Diconnect from server
+        6. Disconnect from server
         """)
 
     def get_menu_option(self):
@@ -70,12 +43,14 @@ def print_menu(self):
         """Gets a list of active users from server.
 
         """
-        data = ("1","")
-        self.handler_send(data)
-        (client_id, client_list) = self.handler_get()
-        print("Client List")
-        for i in client_list:
-            print(i, ": ", client_list[i])
+        data = {"sent_on": datetime.datetime.now(), "client_id": self.client.client_id, "option": 1}
+        self.client.send(data)
+        response = self.client.retrieve()
+        client_list = response["client_list"]
+        print("Client List:")
+        num = 1
+        for client_id, client_name in client_list.items():
+            print("({}) {} : {}".format(num, client_name, client_id))
 
     def send_message(self):
         """Sends a message
@@ -127,44 +102,34 @@ def print_menu(self):
 
 
     def run(self):
+        """Runs the client
+
+        """
         try:
-            # Connects to the server using its host IP and port
-            # tcp_socket.connect((self.host, self.port))
-            # Connects to the server using its host IP and port
-            # client.connect((HOST, PORT))
-            # # Prepare, serializes and send data to the server
-            # data = {"msg_from_client": "Hello from Client!", "sent_on": datetime.datetime.now()}
-            # data_serialized = pickle.dumps(data)
-            # client.send(data_serialized)
-            # Server response is received. However, we need to take care of data size
-            server_response = client.recv(4096)
-            # Desearializes the data.
-            server_data = pickle.loads(server_response)
-            # Get all the values in the data dictionary
-            client_id = data['client_id'] # the client id assigned by the server
-            server_msg = data['msg_from_server']
-            # Print data and close client.
-            # What would be needed in order to keep the client alive all the time?
-            # Think about it
-            print("Client " + str(client_id) + "successfully connected to server")
-            print("Server says: " + server_msg)
+            # establish connection with server
+            self.client.connect()
+
+            # Logs in to server.
+            data = {"client_name": self.client.client_name, "sent_on": datetime.datetime.now(), "client_id": None, "option": -1}
+            self.client.send(data)
+            response = self.client.retrieve()
+            self.client.client_id = response["client_id"]
+            print("Successfully connected to server with IP: {} and port: {}".format(self.client.ip, self.client.port))
+            print("Your client info is:")
+            print("Client Name: ", self.client.client_name)
+            print("Client ID: ", self.client.client_id)
+
+            # 'start' client
+            while True:
+                self.print_menu()
+                option = self.get_menu_option()
+                self.handle_menu_option(option)
+            
         except socket.error as socket_exception:
             print(socket_exception) # An exception ocurred at this point
-        client.close()
-    def start(self):
-        # establish connection with server
-        self.client.connect()
-
-        # Logs in to server.
-        # client_msg = ("0", self.client_name)
-        client_msg = self.client.client_name
-        data = {"msg": client_msg, "sent_on": datetime.datetime.now(), "client_id": None, "option": -1}
-        self.handler_send(data)
-        response = self.handler_get()
-        self.client_id = response["client_id"]
-        print("Successfully connected to server with IP: {} and port: {}".format(self.ip, self.port))
-        print("Your client info is:")
-        print("Client Name: ", self.client_name)
-        print("Client ID: ", self.client_id)
-
-        print(response[msg])#debug
+        except DisconnectSignal:
+            print("Client Disconnected!")
+        except Exception as e:
+            print(e)
+        self.client.disconnect()
+        

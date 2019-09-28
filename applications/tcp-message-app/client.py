@@ -18,7 +18,8 @@ Class client:
 from helpers import (
     getIpFromUser,
     getPortFromUser,
-    DisconnectSignal
+    MAX_NUM_CONNECTIONS,
+    BUFFER_SIZE
 )
 import socket
 import pickle
@@ -34,6 +35,7 @@ from TCPClientHandler import TCPClientHandler
 #             print(socket_exception)
 #         self.socket.close()
 #     return wrapper
+
 
 class Client:
 
@@ -56,8 +58,6 @@ class Client:
         """
         # Connects to the server using its host IP and port
         self.tcp_socket.connect((self.ip, self.port))
-
-        
         
     def disconnect(self):
         self.tcp_socket.close()
@@ -75,29 +75,12 @@ class Client:
 
         """
          # Server response is received. However, we need to take care of data size
-        server_response = self.tcp_socket.recv(4096)
+        server_response = self.tcp_socket.recv(BUFFER_SIZE)
         # Desearializes the data.
         server_data = pickle.loads(server_response)
         return server_data
 
-    def run(self):
-        """Runs the client
-
-        """
-        try:
-            self.connect()
-            while True:
-                self.print_menu()
-                option = self.get_menu_option()
-                self.handle_menu_option(option)
-
-        except socket.error as socket_exception:
-            print(socket_exception) # An exception ocurred at this point
-        except DisconnectSignal:
-            print("Client Disconnected!")
-        self._disconnect()
-
 if __name__ == '__main__':
-    client = Client()
+    client = Client('127.0.0.1', 50000)
     client_wrapper = TCPClientHandler(client)
-    client_wrapper.start()
+    client_wrapper.run()

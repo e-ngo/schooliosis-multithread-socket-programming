@@ -9,6 +9,9 @@ import re
 MIN_IANA_PORT = 49152
 MAX_IANA_PORT = 65535
 
+MAX_NUM_CONNECTIONS = 5
+BUFFER_SIZE = 4096
+
 def getIpFromUser(custom_prompt="IP Address: "):
     while True:
         ip = input(custom_prompt)
