@@ -16,30 +16,30 @@ from helpers import (
     DisconnectSignal,
     ClientDisconnect,
     ServerDisconnect,
-    TEST_PORT
 )
 import threading
 import queue
 
+# lock used for writing to Channel.clients_connected
 clients_list_lock = threading.Lock()
+# lock used for writing to message queue
 message_queue_lock = threading.Lock()
 
-"""
-Channel subclasses client for the sockets, send, retrieve, and disconnect functionalities.
-Desired inherited methods:
-def send(self, data):
-def retrieve(self):
-"""
 class Channel:
+    """
+    Channel allows clients to connect to it and chat with each other
+    """
     def __init__(self):
         self.ip = getIpFromUser("Enter the ip address of the new channel: ")
         self.port = getPortFromUser("Enter the port to listen for new users: ")
         self.clients_connected = {} # contains a map of connected clients {client_id: client_socket}
-        # self.client_id = None
         self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.message_queue = queue.Queue() # this holds a queue of messages to send to all users. (sender_id,message). Not a size concern because python resizes on its own.
 
     def retrieve(self, sock):
+        """Retrieves a message from client
+
+        """
         # unpickles data.
         client_request = sock.recv(BUFFER_SIZE)
 
@@ -51,12 +51,12 @@ class Channel:
         return client_data
 
     def send(self, sock, data):
-        try:
-            # pickles data for sending
-            data_serialized = pickle.dumps(data)
-            sock.send(data_serialized)
-        except socket.error as socket_exception:
-            print("Issue sending data")
+        """Sends message to client
+
+        """
+        # pickles data for sending
+        data_serialized = pickle.dumps(data)
+        sock.send(data_serialized)
 
     def close_server(self):
         """Closes server and stops its threads
@@ -71,8 +71,11 @@ class Channel:
         """
         date = datetime.datetime.now()
         res = {"sent_on": date, "message": message}
+        # for each client in channel
         for client_id, client_sock in self.clients_connected.items():
-            if client_id is not exclude_client_id:
+            # if client is not excluded client
+            if client_id != exclude_client_id:
+                # send message
                 self.send(client_sock, res)
 
     def handle_client_login(self, client_sock, client_id):
@@ -85,18 +88,14 @@ class Channel:
         with clients_list_lock:
             self.clients_connected[client_id] = client_sock
         message = "Userid: {} connected to the channel".format(client_id)
-        # puts message on queue to send.
+        # puts new user connected message in queue
         with message_queue_lock:
             self.message_queue.put((client_id, message))
-        # server log message
-        print(message)
 
     def handle_client_disconnect(self, client_sock, client_id):
         """Disconnects a client from channel
 
         """
-        print("list of clients", self.clients_connected)
-        print("key is ", client_id)
         # disconnects client
         client_sock.close()
         # delete user from clients_connected
@@ -106,10 +105,11 @@ class Channel:
         # notify all clients
         with message_queue_lock:
             self.message_queue.put((client_id, message))
-        # print server log message
-        print(message)
     
     def client_thread(self, client_sock, addr):
+        """This thread handles connection with new client
+
+        """
         # read in client's login handshake.
         data = self.retrieve(client_sock)
         client_id = str(addr[1])
@@ -117,10 +117,10 @@ class Channel:
             # logs client in
             self.handle_client_login(client_sock, client_id)
             while True:
-                # the server gets data request from client
+                # constantly listen for client's message
                 data = self.retrieve(client_sock)
-                # extract message from data
                 try:
+                    # extract message from data
                     client_id = data["client_id"]
                     client_name = data["client_name"]
                     message = data["message"]
@@ -129,26 +129,31 @@ class Channel:
                         # adds message to queue to broadcast to all clients
                         self.message_queue.put((client_id, broadcast_message))
                 except KeyError:
-                    # error in request.
+                    # error in request...
                     pass
         except ClientDisconnect:
+            # if ClientDisconnect signal was raised, end connection
             pass
+        # disconnects client
         self.handle_client_disconnect(client_sock, client_id)
 
     def broadcast_thread(self):
-        """Reads from a message queue and sends a message to all clients when new message comes
-         from queue
+        """This thread reads from a message queue and sends a message to all clients when new message comes from queue
 
         """
         # poll for new messages
         while True:
-            with message_queue_lock:
-                # grabs message from queue
-                # note .get() innately waits for next message on queue... no need for sleep
-                sender_id, message = self.message_queue.get()
-            # sends to all, excluding the sender of the message so no dups on sender's side
-            self.send_to_all(message, sender_id)
-            # after sending all, remove message from queue
+            try:
+                with message_queue_lock:
+                    # grabs message from queue
+                    sender_id, message = self.message_queue.get(block=False)
+                # sends to all, excluding the sender of the message so no dups on sender's side
+                self.send_to_all(message, sender_id)
+                #server log message
+                print(message)
+            except queue.Empty:
+                # if queue is empty, wait
+                time.sleep(0.10)
                 
     def run_server(self):
         """Main server logic
@@ -164,25 +169,27 @@ class Channel:
             thread_c = threading.Thread(target=self.client_thread, args=(client_sock, addr))
             thread_c.start()
             
-
     def run(self):
+        """Initializes server configurations. Starts server
+
+        """
         try:
             self.tcp_socket.bind((self.ip, self.port)) # bind host and port to the server socket
-            self.tcp_socket.listen(MAX_NUM_CONNECTIONS) # max 5 connections at a time
+            self.tcp_socket.listen(MAX_NUM_CONNECTIONS)
             print("Channel Info")
             print("IP Address :", self.ip)
             print("Channel id:", self.port)
             print("Waiting for users....")
-            # outer loop accepts new clients
+            # starts server logic
             self.run_server()
         except socket.error as socket_exception:
-            print(socket_exception) # An exception ocurred at this point
+            print(socket_exception)
         except KeyboardInterrupt:
+            # allows user to kill process with ctrl-c
             print("\nClosing the channel")
         except ServerDisconnect:
             print("\nClosing the channel")
         except Exception as e:
-            print(e) # TODO: Turn to pass?
-        # this happens when the server is killed. (i.e kill process from terminal )
-        # or there is a non recoverable exception, and the server process is killed internally
+            pass
+        # Closes server
         self.close_server()

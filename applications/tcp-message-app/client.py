@@ -1,19 +1,8 @@
 """
-
-a.) TCP Client in charge of
+TCP Client in charge of
 1.) Connect to server
 2.) Send requests to the server
 3.) Retrieve responses from the server.
-Retrieved responses from the server are handeld by TCPClientHandler, 
-    which is the worker class that provides all the menu actions executed from client size.
-b.) after executing client.py script, should show a menu where user can select different actions.
-c.) Options
-
-Design:
-
-Class client:
-
-
 """
 from helpers import (
     getIpFromUser,
@@ -21,7 +10,6 @@ from helpers import (
     MAX_NUM_CONNECTIONS,
     BUFFER_SIZE,
     ServerDisconnect,
-    TEST_PORT
 )
 import socket
 import pickle
@@ -29,7 +17,9 @@ import datetime
 
 
 class Client:
+    """Client class is in charge of connecting, sending, and retrieving from a socket
 
+    """
     def __init__(self, ip=None, port=None, name=None):
         if not ip:
             # Prompt user for IP
@@ -51,33 +41,32 @@ class Client:
         self.tcp_socket.connect((self.ip, self.port))
         
     def disconnect(self):
+        """Closes the current connection
+
+        """
         self.tcp_socket.close()
         
     def send(self, data):
         """send requests to the server
 
         """
-        try:
-            data_serialized = pickle.dumps(data)
-            self.tcp_socket.send(data_serialized)
-        except socket.error as socket_exception:
-            print("Issue sending data")
+        data_serialized = pickle.dumps(data)
+        self.tcp_socket.send(data_serialized)
 
     def retrieve(self):
         """retrieve responses from the server
 
         """
-         # Server response is received. However, we need to take care of data size
         server_response = self.tcp_socket.recv(BUFFER_SIZE)
         if not server_response:
             raise ServerDisconnect()
-        # Desearializes the data.
+        # Deserializes the data.
         server_data = pickle.loads(server_response)
         return server_data
 
 if __name__ == '__main__':
+    # handles cyclic imports
     from TCPClientHandler import TCPClientHandler
-
-    client = Client('127.0.0.1', TEST_PORT)
+    client = Client()
     client_wrapper = TCPClientHandler(client)
     client_wrapper.run()

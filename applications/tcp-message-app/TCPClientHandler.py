@@ -1,10 +1,7 @@
 """
-Basic TCP Client code sample.
-This client creates a connection to the server,
-and then, sends serialized data. The server, then
-provides a response that is printed in console
+Retrieved responses from the server are handeld by TCPClientHandler, 
+    which is the worker class that provides all the menu actions executed from client size.
 """
-# The only socket library allowed for this assigment
 import socket
 import datetime
 from helpers import (
@@ -15,10 +12,17 @@ from helpers import (
     getPortFromUser
 )
 import threading
-from channel import Channel
-from client import Client
 import os
+
+from client import Client
+from channel import Channel
+
+socket_lock = threading.Lock()
 class TCPClientHandler:
+    """TCPClientHandler acts as the worker class that implements all the menu actions, 
+    executed using the client class
+
+    """
     def __init__(self, client):
         self.client = client
 
@@ -39,7 +43,7 @@ class TCPClientHandler:
         """)
 
     def get_menu_option(self):
-        """Retrieve responses from the server
+        """Gets menu option from user
 
         """
         while True:
@@ -51,22 +55,27 @@ class TCPClientHandler:
         """Gets a list of active users from server.
 
         """
+        # format request
         data = {"sent_on": datetime.datetime.now(), "client_id": self.client.client_id, "option": 1}
         self.client.send(data)
         response = self.client.retrieve()
+
         client_list = response["client_list"]
         print("Client List:")
         num = 1
         for client_id, client_name in client_list.items():
             print("({}) {} : {}".format(num, client_name, client_id))
+            num += 1
 
     def send_message(self):
-        """Sends a message
+        """Sends a message to another client on server
 
         """
-        data = {"sent_on": datetime.datetime.now(), "client_id": self.client.client_id, "option": 2}
+        # get client message and receiver information
         message = input("Your message: ")
         receiver_id = input("User ID recipient: ")
+        # format request
+        data = {"sent_on": datetime.datetime.now(), "client_id": self.client.client_id, "option": 2}
         data["message"] = message
         data["receiver_id"] = receiver_id
         self.client.send(data)
@@ -74,7 +83,7 @@ class TCPClientHandler:
         print(response["message"])
 
     def get_messages(self):
-        """Retrieves user's messages
+        """Retrieves client's messages from server
 
         """
         data = {"sent_on": datetime.datetime.now(), "client_id": self.client.client_id, "option": 3}
@@ -82,7 +91,8 @@ class TCPClientHandler:
         response = self.client.retrieve()
         print(response["message"])
         for i in response["client_messages"]:
-            # ((sender_id, sender_name),sent_on,message)
+            # API response: ((sender_id, sender_name),sent_on,message)
+            # prints: (sent_on) sender_name(sender_id) says message
             print("({}) {}({}) says {}".format(i[1],i[0][1],i[0][0],i[2]))
 
     def create_new_channel(self):
@@ -91,62 +101,83 @@ class TCPClientHandler:
         """
         # close current connection
         self.client.disconnect()
-        # turn current client into channel admin
+
         channel = Channel()
         channel.run()
 
     def client_receive_thread(self):
-        """Thread that receives messages from the server
+        """Thread that receives messages from the server/channel
         
         """
         # constantly poll for new messages
-        while True:
-            print("blah")
-            data = self.client.retrieve()
-            message = data["message"]
-            print(message)
+        try:
+            while True:
+                # receive message from server
+                data = self.client.retrieve()
+                message = data["message"]
+                # print message
+                print(message)
+        except ServerDisconnect:
+            # signaled that server has closed the connection.
+            print("Server Disconnected!")
+            self.client.disconnect()
+            # end process
+            os._exit(1)
 
     def client_send_thread(self):
         """Thread that sends messages from the server
         
         """
         print("Enter Bye to exit the channel")
-        while True:
-            # get input from user
-            message = input("{}: ".format(self.client.client_name))
-            # format request
-            request = {"client_id":self.client.client_id, "client_name": self.client.client_name, "message": message}
-            self.client.send(request)
-            if "Bye" in message:
-                # disconnect client
-                raise ClientDisconnect
+        try:
+            # constantly poll for user input.
+            while True:
+                # get input from user
+                message = input()
+                # format request
+                request = {"client_id":self.client.client_id, "client_name": self.client.client_name, "message": message}
+                self.client.send(request)
+                # if message has Bye, end execution
+                if "Bye" in message:
+                    # disconnect client
+                    break
+        except KeyboardInterrupt:
+            # allows user to exit with ctrl-c without an ugly exception message
+            pass
+        # if control flow reaches this point, close client...
+        raise ClientDisconnect()
 
     def join_new_channel(self):
         """Join an existing channel
 
         """
-        # close current connection
-        self.client.disconnect()
-        ip = getIpFromUser("Enter the ip address of the channel: ")
-        port = getPortFromUser("Enter the port of the channel: ")
-        name = self.client.client_name
-        # create new client.
-        self.client = Client(ip, port, name)
-        # connects the client to channel
-        self.client.connect()
-        # Logs in to channel.
-        data = {"client_name": self.client.client_name, "sent_on": datetime.datetime.now(), "client_id": None }
-        # sends login handshake
-        self.client.send(data)
-        # get client_Id.
-        response = self.client.retrieve()
-        self.client.client_id = response["client_id"]
-
-        # thread to receive messages and printing them
-        thread_receive = threading.Thread(target=self.client_receive_thread)
-        thread_receive.start()
-        # thread to send messages
-        self.client_send_thread()
+        try:
+            # close current connection
+            self.client.disconnect()
+            # get new channel information
+            ip = getIpFromUser("Enter the ip address of the channel: ")
+            port = getPortFromUser("Enter the port of the channel: ")
+            name = self.client.client_name
+            # create new client.
+            self.client = Client(ip, port, name)
+            # connects the client to channel
+            self.client.connect()
+            # Logs in to channel.
+            data = {"client_name": self.client.client_name, "sent_on": datetime.datetime.now(), "client_id": None }
+            # sends login handshake
+            self.client.send(data)
+            # get client_Id.
+            response = self.client.retrieve()
+            self.client.client_id = response["client_id"]
+            # thread to receive messages and print them
+            thread_receive = threading.Thread(target=self.client_receive_thread)
+            thread_receive.start()
+            # thread to send messages. Main thread.
+            self.client_send_thread()
+        except Exception:
+            # if uncaught exception, catch it here and disconnect client
+            print("Connection has closed")
+            raise ClientDisconnect()
 
     def handle_menu_option(self, option):
         """Handles user option
@@ -178,30 +209,33 @@ class TCPClientHandler:
         try:
             # establish connection with server
             self.client.connect()
-
             # Logs in to server.
             data = {"client_name": self.client.client_name, "sent_on": datetime.datetime.now(), "client_id": None, "option": -1}
             self.client.send(data)
+            # retrieve client_id from server
             response = self.client.retrieve()
             self.client.client_id = response["client_id"]
             print("Successfully connected to server with IP: {} and port: {}".format(self.client.ip, self.client.port))
             print("Your client info is:")
             print("Client Name: ", self.client.client_name)
             print("Client ID: ", self.client.client_id)
-
-            # 'start' client
+            
+            # constantly poll for input
             while True:
                 self.print_menu()
                 option = self.get_menu_option()
                 self.handle_menu_option(option)
             
         except socket.error as socket_exception:
-            print(socket_exception) # An exception ocurred at this point
+            print(socket_exception)
         except ClientDisconnect:
             print("Client Disconnected!")
         except ServerDisconnect:
             print("Server Disconnected!")
         except Exception as e:
+            # if any other uncaught exception
             pass
+        # if control flow reaches here, disconnect client.
         self.client.disconnect()
+        # end process
         os._exit(1)

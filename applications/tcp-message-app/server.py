@@ -1,19 +1,5 @@
 """
-Low level implementation of a single instance TCP Server using sockets.
-Note that for your project, your server code needs to be object oriented designed,
-scalable, and the server must accept multiple clients at the same time
-using multithreading and locks.
-
-TCP Server should be implemented as follows:
-1.) Currently main thread is blocking. When a client connects, they will get the main thread,
-and will wait until server provides a response. Need to implement multi-threading to avoid
-this situation. Each new client connection generates a new thread.
-"May face race conditions. Solved with locks and mutex".
-tw othreads may try to write at the same time on the server (trying to write to the same memory slot).
-Use locks, each time a new thread is trying to write or read dat aform the server, acquire a new clients_list_lock.
-Lock will be released only wen the thread finished the writing process in memory. 
-Clients reading from memory do not need to be locked.
-
+This module implements the Server class
 """
 import socket
 import pickle
@@ -28,15 +14,20 @@ from helpers import (
     DisconnectSignal,
     ClientDisconnect,
     ServerDisconnect,
-    TEST_PORT
 )
 import threading
 
+# this lock is for Server.clients
 clients_list_lock = threading.Lock()
+# this lock is for server.clients_messages
 clients_messages_lock = threading.Lock()
+# this lock is for Server.server_running
 server_running_lock = threading.Lock()
 
 class Server:
+    """The Server class interfaces with the TCPClientHandler to create a tcp-message-app.
+
+    """
     def __init__(self, ip=None, port=None):
         self.ip = ip
         self.port = port
@@ -48,22 +39,29 @@ class Server:
             self.port = getPortFromUser("Enter the server port:")
 
         self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.clients = {} # { client_id: client_name }
-        self.clients_messages = {} # {client_id: [((sender_id, sender_name),sent_on,message)]}
-        self.server_running = True
+        self.clients = {} # Holds all clients { client_id: client_name }
+        self.clients_messages = {} # Holds all client's messages {client_id: [((sender_id, sender_name),sent_on,message)]}
+        self.server_running = True # signals whether or not server is running
 
     def retrieve(self, sock):
+        """Handles receiving client request from socket.
+
+        """
         # unpickles data.
         client_request = sock.recv(BUFFER_SIZE)
 
         if not client_request:
-            raise ClientDisconnect() # error on clientside.
+            # error on clientside. Disconnect client.
+            raise ClientDisconnect()
         # deserialize data
         client_data = pickle.loads(client_request)
 
         return client_data
 
     def send(self, sock, data):
+        """Handles serializing and sending data to clients
+
+        """
         try:
             # pickles data for sending
             data_serialized = pickle.dumps(data)
@@ -72,28 +70,38 @@ class Server:
             print("Issue sending data")
 
     def close_server(self):
+        """Closes the listening socket and ends process
+
+        """
         self.tcp_socket.close()
-        # server_running_lock.acquire()
         with server_running_lock:
+            # signal to other threads to end
             self.server_running = False
-        # server_running_lock.release()
+        # ends process
         os._exit(1)
 
     def handle_client_get_user_list(self, client_sock, client_id, data):
+        """Sends user list to client
+
+        """
+        # generate response
         date = datetime.datetime.now()
         res = { "client_list": self.clients }
         res["client_id"] = client_id
         res["sent_on"] = date
+        # send response
         self.send(client_sock,res)
+        # print server log message
         log_message = "({}) List of users sent to client: {}".format(date,client_id)
         print(log_message)
 
     def handle_client_send_message(self, client_sock, client_id, data):
-        """Parses data, saves message to user's list of messages, and returns 
+        """Parses data, saves message to user's list of messages, and returns message code.
 
         """
-        res = {}
+        res = {} # holds response object
         try:
+            # get message information
             sender_id = client_id
             sender_name = self.clients[sender_id]
             receiver_id = data["receiver_id"]
@@ -103,14 +111,16 @@ class Server:
             message_entry = ((sender_id, sender_name), sent_on, message)
             # with syntax makes appropriate calls to acquire and release.
             with clients_messages_lock:
+                # save message on server for respective receiver
                 try:
+                    # if recevier key exists in object, add to existing list of messages
                     self.clients_messages[receiver_id].append(message_entry)
                 except KeyError:
-                    # add entry for user
+                    #  else, add entry for user
                     self.clients_messages[receiver_id] = [message_entry]
-
+            # response success message
             res["message"] = "Message was successfully sent"
-            
+            # server log message
             log_message = "Message from client {} to client {} was sent".format(client_id, receiver_id)
         except KeyError as e:
             # receiver does not exist. Send response to user.
@@ -120,14 +130,16 @@ class Server:
         res["client_id"] = client_id
         res["sent_on"] = date
         self.send(client_sock,res)
+        # print server log message
         print("({}) {}".format(date, log_message))
 
     def handle_client_get_messages(self, client_sock, client_id, data):
-        """Sends client_id's messages to connected socket
+        """Sends client's messages to client
 
         """
         res = {}
         try:
+            # Get client's messages
             res["client_messages"] = self.clients_messages[client_id]
             log_message = "List of messages sent to {}".format(client_id)
             num_messages = len(res["client_messages"])
@@ -136,20 +148,30 @@ class Server:
             else:
                 res["message"] = "You have no messages"
         except KeyError:
+            # if client has no entry, respond with error
             res["client_messages"] = []
             res["message"] = "You have no messages"
             log_message = "Client {}'s messages were not found".format(client_id)
+        # format and send response
         date = datetime.datetime.now()
         res["client_id"] = client_id
         res["sent_on"] = date
         self.send(client_sock,res)
+        # print server debug message
         print("({}) {}".format(date, log_message))
-        
 
     def handle_user_disconnect(self, client_sock, client_id, data):
+        """Handles option to disconnect client
+
+        """
+        # raises a signal that is caught by server and ends client connection
         raise ClientDisconnect()
 
     def handle_option(self, client_sock, client_id, data):
+        """Calls proper handling function based off of option
+
+        """
+        # get option from client request
         option = data['option']
         if option == 1:
             # get user list
@@ -161,77 +183,91 @@ class Server:
             # get my messages
             return self.handle_client_get_messages(client_sock, client_id, data)
         elif option == 6:
+            # disconnect client
             return self.handle_user_disconnect(client_sock, client_id, data)
 
     def handle_client_login(self, client_sock, client_id):
+        """Logs client into server by creating entries in self.clients and self.clients_messages and responding with user's client_id
+
+        """
+        # get client information
         data = self.retrieve(client_sock)
         client_name = data['client_name']
         date = data['sent_on']
-        # clients_list_lock.acquire()
         with clients_list_lock:
+            # creates new client entry
             self.clients[client_id] = client_name
-        # clients_list_lock.release()
-        print("({}) Client {} with clientid: {} has connected to this server".format(date, client_name, client_id))
         # prepare server response
         server_msg = "Hello from server!"
         server_response = {"client_id": client_id, "msg": server_msg, "sent_on": datetime.datetime.now()}
-        # serialize and sent the data to client
+        # sends client_id to user
         self.send(client_sock, server_response)
+        # print debug message
+        print("({}) Client {} with clientid: {} has connected to this server".format(date, client_name, client_id))
     
     def handle_client_disconnect(self, client_sock, client_id):
+        """Disconnects client from server. Removes client's information from server.
+
+        """
         client_name = self.clients[client_id]
-        # clients_list_lock.acquire()
         with clients_list_lock:
             del self.clients[client_id]
-        # clients_list_lock.release()
         client_sock.close()
         print("({}) Client {} ({}) disconnected from server".format(datetime.datetime.now(),client_name, client_id))
         # end thread
         sys.exit(0)
     
     def client_thread(self, client_sock, addr):
+        """Client thread handles interaction with specific client given socket
+
+        """
         # the client id assigned by server to this client
         # note that addr[0] is the host ip address
         client_id = str(addr[1])
         try:
-            # inner loop handles the interaction between this client and the server
+            # log user in to server
             self.handle_client_login(client_sock, client_id)
+            # constantly poll for new request
             while self.server_running:
                 # the server gets data request from client
                 data = self.retrieve(client_sock)
+                # server handles option
                 self.handle_option(client_sock, client_id, data)
         except ClientDisconnect:
+            # if ClientDisconnect signal has been raised...
             pass
+        # disconnect client
         self.handle_client_disconnect(client_sock, client_id)
 
     def run(self):
+        """Starts running the server
+
+        """
         try:
+            # binds to socket
             self.tcp_socket.bind((self.ip, self.port)) # bind host and port to the server socket
-            self.tcp_socket.listen(MAX_NUM_CONNECTIONS) # max 5 connections at a time
+            self.tcp_socket.listen(MAX_NUM_CONNECTIONS) # Allow max 5 buffer connection requests at a time
+            # server debug message
             print("Server listening at port: {}... ".format(str(self.port)))
-            # outer loop accepts new clients
+            # Constantly accepts new clients
             while self.server_running:
                 # saves the host ip address and the client socket connected
                 client_sock, addr = self.tcp_socket.accept()
-                # # keep the server alive waiting for clients
-                # client connected, server accepts connection
+                # creates new thread to handle new client
                 thread = threading.Thread(target=self.client_thread, args=(client_sock, addr))
                 thread.start()
-                # this happens when either the client do no send more data
-                # or the client closed the connection from the client side.
-                
         except socket.error as socket_exception:
-            print(socket_exception) # An exception ocurred at this point
+            print(socket_exception)
         except KeyboardInterrupt:
+            # allows ctrl-c to exit program
             print("\nClosing the server")
         except ServerDisconnect:
             print("\nClosing the server")
         except Exception as e:
-            print(e) # TODO: Turn to pass?
-        # this happens when the server is killed. (i.e kill process from terminal )
-        # or there is a non recoverable exception, and the server process is killed internally
+            pass
+        # close server
         self.close_server()
 
 if __name__=='__main__':
-    server = Server('127.0.0.1', TEST_PORT)
+    server = Server()
     server.run()
