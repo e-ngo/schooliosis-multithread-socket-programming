@@ -12,6 +12,8 @@ MAX_IANA_PORT = 65535
 MAX_NUM_CONNECTIONS = 5
 BUFFER_SIZE = 4096
 
+TEST_PORT = 50000
+
 def getIpFromUser(custom_prompt="IP Address: "):
     while True:
         ip = input(custom_prompt)
@@ -30,4 +32,12 @@ def getPortFromUser(custom_prompt="port listening:"):
 
 class DisconnectSignal(Exception):
     """Exception to denote a safe disconnect request"""
+    pass
+
+class ClientDisconnect(DisconnectSignal):
+    """Exception to denote a client disconnecting from server"""
+    pass
+
+class ServerDisconnect(DisconnectSignal):
+    """Exception to denote a server disconnecting from client"""
     pass

@@ -8,8 +8,16 @@ provides a response that is printed in console
 import socket
 import datetime
 from helpers import (
-    DisconnectSignal
+    DisconnectSignal,
+    ServerDisconnect,
+    ClientDisconnect,
+    getIpFromUser,
+    getPortFromUser
 )
+import threading
+from channel import Channel
+from client import Client
+import os
 class TCPClientHandler:
     def __init__(self, client):
         self.client = client
@@ -56,25 +64,89 @@ class TCPClientHandler:
         """Sends a message
 
         """
-        pass
+        data = {"sent_on": datetime.datetime.now(), "client_id": self.client.client_id, "option": 2}
+        message = input("Your message: ")
+        receiver_id = input("User ID recipient: ")
+        data["message"] = message
+        data["receiver_id"] = receiver_id
+        self.client.send(data)
+        response = self.client.retrieve()
+        print(response["message"])
 
     def get_messages(self):
         """Retrieves user's messages
 
         """
-        pass
+        data = {"sent_on": datetime.datetime.now(), "client_id": self.client.client_id, "option": 3}
+        self.client.send(data)
+        response = self.client.retrieve()
+        print(response["message"])
+        for i in response["client_messages"]:
+            # ((sender_id, sender_name),sent_on,message)
+            print("({}) {}({}) says {}".format(i[1],i[0][1],i[0][0],i[2]))
 
     def create_new_channel(self):
         """Creates a new channel
 
         """
-        pass
+        # close current connection
+        self.client.disconnect()
+        # turn current client into channel admin
+        channel = Channel()
+        channel.run()
+
+    def client_receive_thread(self):
+        """Thread that receives messages from the server
+        
+        """
+        # constantly poll for new messages
+        while True:
+            print("blah")
+            data = self.client.retrieve()
+            message = data["message"]
+            print(message)
+
+    def client_send_thread(self):
+        """Thread that sends messages from the server
+        
+        """
+        print("Enter Bye to exit the channel")
+        while True:
+            # get input from user
+            message = input("{}: ".format(self.client.client_name))
+            # format request
+            request = {"client_id":self.client.client_id, "client_name": self.client.client_name, "message": message}
+            self.client.send(request)
+            if "Bye" in message:
+                # disconnect client
+                raise ClientDisconnect
 
     def join_new_channel(self):
-        """Joins an existing p2p channel
+        """Join an existing channel
 
         """
-        pass
+        # close current connection
+        self.client.disconnect()
+        ip = getIpFromUser("Enter the ip address of the channel: ")
+        port = getPortFromUser("Enter the port of the channel: ")
+        name = self.client.client_name
+        # create new client.
+        self.client = Client(ip, port, name)
+        # connects the client to channel
+        self.client.connect()
+        # Logs in to channel.
+        data = {"client_name": self.client.client_name, "sent_on": datetime.datetime.now(), "client_id": None }
+        # sends login handshake
+        self.client.send(data)
+        # get client_Id.
+        response = self.client.retrieve()
+        self.client.client_id = response["client_id"]
+
+        # thread to receive messages and printing them
+        thread_receive = threading.Thread(target=self.client_receive_thread)
+        thread_receive.start()
+        # thread to send messages
+        self.client_send_thread()
 
     def handle_menu_option(self, option):
         """Handles user option
@@ -97,9 +169,7 @@ class TCPClientHandler:
             return self.join_new_channel()
         elif option == 6:
             # Disconnect from server
-            raise DisconnectSignal()
-
-
+            raise ClientDisconnect()
 
     def run(self):
         """Runs the client
@@ -127,9 +197,11 @@ class TCPClientHandler:
             
         except socket.error as socket_exception:
             print(socket_exception) # An exception ocurred at this point
-        except DisconnectSignal:
+        except ClientDisconnect:
             print("Client Disconnected!")
+        except ServerDisconnect:
+            print("Server Disconnected!")
         except Exception as e:
-            print(e)
+            pass
         self.client.disconnect()
-        
+        os._exit(1)
