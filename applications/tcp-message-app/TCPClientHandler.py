@@ -1,6 +1,5 @@
 """
-Retrieved responses from the server are handeld by TCPClientHandler, 
-    which is the worker class that provides all the menu actions executed from client size.
+This module implements the TCPClientHandler class
 """
 import socket
 import datetime

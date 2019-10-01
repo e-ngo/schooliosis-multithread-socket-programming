@@ -1,6 +1,5 @@
 """
-The Channel class is responsible for representing a channel.
-A client can create a channel, and the channel will act like a server...
+This module implements the Channel class
 """
 import socket
 import pickle

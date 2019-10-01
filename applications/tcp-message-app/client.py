@@ -1,8 +1,5 @@
 """
-TCP Client in charge of
-1.) Connect to server
-2.) Send requests to the server
-3.) Retrieve responses from the server.
+This module implements the Client class
 """
 from helpers import (
     getIpFromUser,
