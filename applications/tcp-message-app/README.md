@@ -15,6 +15,9 @@ The Server class handles the back-end server logic, receiving a client's request
 
 The Channel class handles the back-end channel logic, whereby clients can connect to a new channel and chat with each other.
 
+Notes:  
+Extra Credit 1: The login feature that I implemented is that clients can use a name to log in to the server. Upon re-login, their messages will still be there. Though passwords should be implemented, for the scope of the login feature, a username login is fine...    
+
 # Project Purpose:
 This project's purpose was to get more familiar with Python socket programming, and multi-threaded programming. Also to get more familiar with the client-server architecture and their responsibilities.
 
@@ -27,7 +30,7 @@ Execution:
 cd to proper root directory: cd applications/tcp-message-app  
 start the server: python3 server.py  
 Enter server's ip and port information.  
-start the client(s): python3 client.py
+start the client(s): python3 client.py  
 Enter server's ip and port information.  
 
 # Compatiblity Issues:

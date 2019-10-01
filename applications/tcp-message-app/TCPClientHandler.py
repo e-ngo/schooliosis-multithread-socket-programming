@@ -62,10 +62,8 @@ class TCPClientHandler:
 
         client_list = response["client_list"]
         print("Client List:")
-        num = 1
-        for client_id, client_name in client_list.items():
-            print("({}) {} : {}".format(num, client_name, client_id))
-            num += 1
+        for num in range(len(client_list)):
+            print("({}) {}".format(num + 1, client_list[num]))
 
     def send_message(self):
         """Sends a message to another client on server
@@ -91,9 +89,9 @@ class TCPClientHandler:
         response = self.client.retrieve()
         print(response["message"])
         for i in response["client_messages"]:
-            # API response: ((sender_id, sender_name),sent_on,message)
-            # prints: (sent_on) sender_name(sender_id) says message
-            print("({}) {}({}) says {}".format(i[1],i[0][1],i[0][0],i[2]))
+            # API response: (sender_id,sent_on,message)
+            # prints: (sent_on) sender_name says message
+            print("({}) {} says {}".format(i[1],i[0],i[2]))
 
     def create_new_channel(self):
         """Creates a new channel
@@ -209,11 +207,19 @@ class TCPClientHandler:
         try:
             # establish connection with server
             self.client.connect()
-            # Logs in to server.
-            data = {"client_name": self.client.client_name, "sent_on": datetime.datetime.now(), "client_id": None, "option": -1}
-            self.client.send(data)
-            # retrieve client_id from server
-            response = self.client.retrieve()
+            response = None
+            # queries client for username
+            while True:
+                # Logs in to server.
+                password = input("Password for {}: ".format(self.client.client_name))
+                data = {"client_name": self.client.client_name, "sent_on": datetime.datetime.now(), "password": password}
+                self.client.send(data)
+                # retrieve client_id from server
+                response = self.client.retrieve()
+                if response["success"] == True:
+                    break
+                print(response["message"])
+
             self.client.client_id = response["client_id"]
             print("Successfully connected to server with IP: {} and port: {}".format(self.client.ip, self.client.port))
             print("Your client info is:")

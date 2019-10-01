@@ -39,8 +39,8 @@ class Server:
             self.port = getPortFromUser("Enter the server port:")
 
         self.tcp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.clients = {} # Holds all clients { client_id: client_name }
-        self.clients_messages = {} # Holds all client's messages {client_id: [((sender_id, sender_name),sent_on,message)]}
+        self.clients = {} # Holds all clients { client_name: (password,client_sock) }
+        self.clients_messages = {} # Holds all client's messages {client_id: [(sender_id,sent_on,message)]}
         self.server_running = True # signals whether or not server is running
 
     def retrieve(self, sock):
@@ -86,7 +86,10 @@ class Server:
         """
         # generate response
         date = datetime.datetime.now()
-        res = { "client_list": self.clients }
+        clients_list = []
+        for name, sock in self.clients.items():
+            clients_list.append(name)
+        res = { "client_list": clients_list }
         res["client_id"] = client_id
         res["sent_on"] = date
         # send response
@@ -103,12 +106,10 @@ class Server:
         try:
             # get message information
             sender_id = client_id
-            sender_name = self.clients[sender_id]
             receiver_id = data["receiver_id"]
-            recevier_name = self.clients[receiver_id]
             sent_on = data["sent_on"]
             message = data["message"]
-            message_entry = ((sender_id, sender_name), sent_on, message)
+            message_entry = (sender_id, sent_on, message)
             # with syntax makes appropriate calls to acquire and release.
             with clients_messages_lock:
                 # save message on server for respective receiver
@@ -186,34 +187,48 @@ class Server:
             # disconnect client
             return self.handle_user_disconnect(client_sock, client_id, data)
 
-    def handle_client_login(self, client_sock, client_id):
+    def handle_client_login(self, client_sock):
         """Logs client into server by creating entries in self.clients and self.clients_messages and responding with user's client_id
 
         """
         # get client information
         data = self.retrieve(client_sock)
-        client_name = data['client_name']
+        client_id = data['client_name']
         date = data['sent_on']
+        password = data['password']
+        try:
+            # if user exists...
+            while True:
+                # compares password field in stored client to given password
+                if self.clients[client_id][0] == password:
+                    # password matches
+                    break
+                # password does not match. Notify client to try again...
+                self.send(client_sock, {"success": False, "message": "Incorrect Password!"})
+                password_entry = self.retrieve(client_sock)
+                password = password_entry['password']
+        except KeyError:
+            # user does not exist. create new user.
+            pass
+        # regsiters user with client_sock. (Essentially creates new user in db)
         with clients_list_lock:
             # creates new client entry
-            self.clients[client_id] = client_name
+            self.clients[client_id] = (password, client_sock)
         # prepare server response
-        server_msg = "Hello from server!"
-        server_response = {"client_id": client_id, "msg": server_msg, "sent_on": datetime.datetime.now()}
+        server_response = {"client_id": client_id, "success": True, "sent_on": datetime.datetime.now()}
         # sends client_id to user
         self.send(client_sock, server_response)
         # print debug message
-        print("({}) Client {} with clientid: {} has connected to this server".format(date, client_name, client_id))
+        print("({}) Client {} has connected to this server".format(date, client_id))
+
+        return client_id
     
     def handle_client_disconnect(self, client_sock, client_id):
         """Disconnects client from server. Removes client's information from server.
 
         """
-        client_name = self.clients[client_id]
-        with clients_list_lock:
-            del self.clients[client_id]
         client_sock.close()
-        print("({}) Client {} ({}) disconnected from server".format(datetime.datetime.now(),client_name, client_id))
+        print("({}) Client {} disconnected from server".format(datetime.datetime.now(),client_id))
         # end thread
         sys.exit(0)
     
@@ -221,12 +236,10 @@ class Server:
         """Client thread handles interaction with specific client given socket
 
         """
-        # the client id assigned by server to this client
-        # note that addr[0] is the host ip address
-        client_id = str(addr[1])
+        client_id = ""
         try:
-            # log user in to server
-            self.handle_client_login(client_sock, client_id)
+            # log user in to server. get client_id, which is the client's name.
+            client_id = self.handle_client_login(client_sock)
             # constantly poll for new request
             while self.server_running:
                 # the server gets data request from client
