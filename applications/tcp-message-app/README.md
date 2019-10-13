@@ -4,6 +4,20 @@ Eric Ngo (917905955)
 # Project Name: 
 Multithreaded Client/Server TCP Message App With Primitive Sockets. 
 
+# Grades
+
+90/100
+
+Comments:
+
+* You missunderstood what the client id is in option 1, the client id is the socket id provided by the server to that client when it connects, and you need to show it in the client console log
+
+* Option 5 not working on my end. The client connected to the new channel is not receiving messages. This is suppose to be similar to a P2P connections between client-client 
+
+* Good docs in README file. 
+
+#
+
 # Project Description:
 The scope of this project was to create a TCP Message App. The architecture is that of a client-server architecture, where a client can connect to a server and send messages to other users. The server saves all of the connected clients and their messages, and handles connecting and disconnecting clients. The TCPClientHandler is suppose to be an interface between the client and the server, whereby the TCPClientHandler handles the application logic and uses the client to send and receiving information from the server. The server receives requests and performs the proper instructions.
 
