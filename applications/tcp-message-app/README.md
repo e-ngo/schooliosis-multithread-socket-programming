@@ -6,7 +6,7 @@ Multithreaded Client/Server TCP Message App With Primitive Sockets.
 
 # Grades
 
-90/100
+100/100 + 2 % extra credit
 
 Comments:
 
