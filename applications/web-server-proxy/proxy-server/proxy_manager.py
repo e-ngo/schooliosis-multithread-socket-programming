@@ -4,7 +4,7 @@
 
 from cache import * # point of access to cache files
 
-class ProxyManager():
+class ProxyManager:
     """
     Manages all the elements from cache and proxy-settings page
     """

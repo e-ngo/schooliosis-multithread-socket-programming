@@ -1,7 +1,7 @@
-import os,sys,thread,socket
+import os,sys,threading,socket
 from proxy_thread import ProxyThread
 
-class ProxyServer(object):
+class ProxyServer:
 
     HOST = '127.0.0.1'
     PORT = 12000
@@ -14,21 +14,27 @@ class ProxyServer(object):
     def run(self):
         try:
             # create a socket
+            server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             # associate the socket to host and port
+            server_socket.bind((self.HOST, self.PORT))
             # listen and accept clients
-            print("Dummy print statement to avoid complile errors in the template. Remove it later")
-        except socket.error, (value, message):
-            print(message)
+            server_socket.listen(self.BACKLOG)
+            print(f"Server started\nListening at {self.HOST}({self.PORT}):")
+            while True:
+                self.accept_clients(server_socket)
+            
+        except socket.error as sock_error:
+            print(sock_error)
 
-
-    def accept_clients(self):
+    def accept_clients(self, server_socket):
         """
         Accept clients that try to connect. 
        :return: 
         """
-        return 0
-
-
+        client_sock, addr = server_socket.accept()
+        thread = threading.Thread(target=self.proxy_thread, args=(client_sock, addr))
+        thread.start()
+        print(f"Client {addr} has connected!")
 
     def proxy_thread(self, conn, client_addr):
         """
@@ -44,6 +50,6 @@ class ProxyServer(object):
         proxy_thread = ProxyThread(conn, client_addr)
         proxy_thread.init_thread()
 
-
-server = ProxyServer()
-server.run()
+if __name__=="__main__":
+    server = ProxyServer()
+    server.run()

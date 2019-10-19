@@ -12,7 +12,7 @@ import pickle
 # will send post requests if the proxy server requires authentification for some sites.
 import requests
 
-class ProxyThread(object):
+class ProxyThread:
     """
     The proxy thread class represents a threaded proxy instance to handle a specific request from a client socket
     """
@@ -34,11 +34,11 @@ class ProxyThread(object):
         """
         return 0
 
-    def client_id(self):
-        """
-        :return: the client id
-        """
-        return 0
+    # def client_id(self):
+    #     """
+    #     :return: the client id
+    #     """
+    #     return 0
 
     def _mask_ip_adress(self):
         """
