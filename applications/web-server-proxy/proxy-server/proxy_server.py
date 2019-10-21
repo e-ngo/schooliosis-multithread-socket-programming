@@ -26,6 +26,8 @@ class ProxyServer:
         except socket.error as sock_error:
             print(sock_error)
 
+        server_socket.close()
+
     def accept_clients(self, server_socket):
         """
         Accept clients that try to connect. 

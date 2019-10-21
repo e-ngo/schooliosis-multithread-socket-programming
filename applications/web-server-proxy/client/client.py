@@ -37,6 +37,9 @@ class Client:
         except socket.error as err:
             print("socket creation failed with error", (err))
 
+    def _disconnect(self):
+        self.client_socket.close()
+
     @network_exception_handler
     def _connect_to_server(self, host_ip, port):
         """
@@ -147,5 +150,11 @@ class Client:
         return response
 
 if __name__=="__main__":
+    # test script
     client = Client()
     client._connect_to_server(Client.SERVER_HOST,Client.SERVER_PORT)
+    client.request_to_proxy({'url': 'https://artsandculture.google.com/entity/%2Fm%2F04q01pj?hl=en', 'is_private_mode': False})
+    res = client.response_from_proxy()
+    print(res)
+
+    client._disconnect()
