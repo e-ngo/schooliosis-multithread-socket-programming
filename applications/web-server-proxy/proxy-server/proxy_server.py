@@ -34,15 +34,15 @@ class ProxyServer:
        :return: 
         """
         client_sock, addr = server_socket.accept()
+        print(f"Client {addr} has connected!")
         thread = threading.Thread(target=self.proxy_thread, args=(client_sock, addr))
         thread.start()
-        print(f"Client {addr} has connected!")
 
     def proxy_thread(self, conn, client_addr):
         """
         I made this method for you. It is already completed and no need to modify it. 
         This already creates the threads for the proxy is up to you to find out where to put it.
-        Hint: since we are using only  non-persistent connections. Then, when a clients connects, 
+        Hint: since we are using non-persistent connections. Then, when a clients connects, 
         it also means that it already has a request to be made. Think about the difference 
         between this and assign#1 when you created a new thread. 
         :param conn: 

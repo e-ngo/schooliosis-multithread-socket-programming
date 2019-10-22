@@ -11,11 +11,32 @@ import pickle
 # request from client to the proxy are just based on url and private mode status. client also
 # will send post requests if the proxy server requires authentification for some sites.
 import requests
+import socket
+
+class ClientDisconnect(Exception):
+    """Signals client disconnect
+
+    """
+    pass
+
+def network_exception_handler(func):
+    def wrap_func(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except socket.error as sock_error:
+            print(f"An HTTPError occurred: {sock_error}")
+        except ClientDisconnect:
+            print("Client has disconnected")
+        except Exception as e:
+            print(f"Something went wrong: {e}")
+        raise ClientDisconnect()
+    return wrap_func
 
 class ProxyThread:
     """
     The proxy thread class represents a threaded proxy instance to handle a specific request from a client socket
     """
+    BUFFER_SIZE=4096
 
     def __init__(self, conn, client_addr):
         self.proxy_manager = ProxyManager()
@@ -32,13 +53,16 @@ class ProxyThread:
         and then proccess the request done by the client
         :return: VOID
         """
-        return 0
+        while True:
+            client_req = self._receive()
+            # parse client_req?
+            self.process_client_request(client_req)
 
-    # def client_id(self):
-    #     """
-    #     :return: the client id
-    #     """
-    #     return 0
+    def client_id(self):
+        """
+        :return: the client id
+        """
+        return self.client_id
 
     def _mask_ip_adress(self):
         """
@@ -68,10 +92,11 @@ class ProxyThread:
        :param data: 
        :return: VOID
        """
-       return 0
+       print(data)
+       self._send("""<html><head><title>Blah</title></head><body>Boo</body></html>""")
+       self.client.close()
 
-
-
+    @network_exception_handler
     def _send(self, data):
         """
         Serialialize data 
@@ -79,13 +104,21 @@ class ProxyThread:
         :param data: the response data
         :return: VOID
         """
+        data_serialized = pickle.dumps(data)
+        self.client.send(data_serialized)
 
+    @network_exception_handler
     def _receive(self):
         """
         deserialize the data 
         :return: the deserialized data
         """
-        return 0
+        client_request = self.client.recv(self.BUFFER_SIZE)
+        if not client_request:
+            raise ClientDisconnect()
+        # Deserializes the data.
+        client_data = pickle.loads(client_request)
+        return client_data
 
     def head_request_to_server(self, url, param):
         """
@@ -94,7 +127,7 @@ class ProxyThread:
         :param param: parameters to be appended to the url
         :return: the headers of the response from the original server
         """
-        return 0
+        
 
     def get_request_to_server(self, url, param):
         """

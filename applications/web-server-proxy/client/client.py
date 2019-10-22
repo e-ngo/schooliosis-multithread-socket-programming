@@ -7,15 +7,40 @@ class ServerDisconnect(Exception):
     """
     pass
 
+class ParsingError(Exception):
+    """
+    Signals error when parsing
+    """
+    pass
+
 def network_exception_handler(func):
     def wrap_func(*args, **kwargs):
         try:
             return func(*args, **kwargs)
         except socket.error as sock_error:
             print(f"An HTTPError occurred: {sock_error}")
-        except Exception as e:
-            print(f"Something went wrong: {e}")
+        except ServerDisconnect:
+            print("Server has disconnected")
+        # except Exception as e:
+            # print(f"Something went wrong: {e}")
     return wrap_func
+
+
+def parse_for_field(response, field):
+    """
+    Given an HTTP Response, parses for certain field...
+    """
+    lines = response.split("\r\n")
+
+    for line in lines:
+        # if field == "\r\n":
+        #     # if looking for HTML content...
+            
+        if line.startswith(field):
+            return line
+        
+    
+    raise ParsingError(f"Error parsing for field: {field}")
 
 class Client:
     """
@@ -112,22 +137,56 @@ class Client:
         """
         Example from SO: https://stackoverflow.com/questions/34192093/python-socket-get
         """
-        path, host = self.parse_url(data['url'])
-        # TODO: Make HTTP method dynamic?
-        # for post requests...
-        # Content-Type: {content_type}\r
-        # Content-Length: {content_length}\r
-        header = f"""\
-        GET {path} HTTP/1.1\r
-        Host: {host}\r
-        Connection: close\r
-        \r\n"""
+        # path, host = self.parse_url(data['url'])
+        original_url = data['url'] + f"?is_private_mode={data['is_private_mode']}"
+        
+        body = ""
+        try:
+            if data['user_name']:
+                body += f"user_name=${data['user_name']}"
+        except KeyError:
+            # user_name not provided...
+            pass
+        try:
+            if data['password']:
+                if body:
+                    body += "&"
+                body += f"password=${data['password']}"
 
-        data["request_message"] = header
+        except KeyError:
+            pass
+
+        if len(body):
+            # if there is body...
+            content_length = len(body)
+            http_request = f"""\
+            POST {original_url} HTTP/1.1\r
+            Host: {data['client_ip']}\r
+            Accept: text/html,application/xhtml+xml\r
+            Accept-Language: en-us,en;q=0.5\r
+            Accept-Encoding: gzip,deflate\r
+            Accept-Charset: ISO-8859-1,utf-8;q=0.7\r
+            Keep-Alive: 0\r
+            Connection: close\r
+            Content-Type: application/x-www-form-urlencoded\r
+            Content-Length: {content_length}\r
+            \r
+            {body}"""
+        else:
+            http_request = f"""\
+            GET {original_url} HTTP/1.1\r
+            Host: {data['client_ip']}\r
+            Accept: text/html,application/xhtml+xml\r
+            Accept-Language: en-us,en;q=0.5\r
+            Accept-Encoding: gzip,deflate\r
+            Accept-Charset: ISO-8859-1,utf-8;q=0.7\r
+            Keep-Alive: 0\r
+            Connection: close\r
+            \r\n"""
         # connect to ProxyServer
         self._connect_to_server(self.SERVER_HOST, self.SERVER_PORT)
         # send info to ProxyServer
-        self._send(data)
+        self._send(http_request)
 
 
     @network_exception_handler
@@ -140,21 +199,16 @@ class Client:
         """
         # receive data
         response = self._receive()
-        # handle response(extract headers, return pretty params)
+        # handle response(extract headers, return pretty params?...)
 
-        # close connection after request?
-        self.client_socket.close()
+        # non-persistent: closer socket afterwards...
+        self._disconnect()
         # render HTML
-
-
         return response
 
 if __name__=="__main__":
     # test script
     client = Client()
-    client._connect_to_server(Client.SERVER_HOST,Client.SERVER_PORT)
-    client.request_to_proxy({'url': 'https://artsandculture.google.com/entity/%2Fm%2F04q01pj?hl=en', 'is_private_mode': False})
+    client.request_to_proxy({'url': 'https://google.com/', 'is_private_mode': False, 'client_ip': '127.0.0.1'})
     res = client.response_from_proxy()
     print(res)
-
-    client._disconnect()
