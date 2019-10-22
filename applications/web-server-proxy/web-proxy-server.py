@@ -27,11 +27,14 @@ def get_user_input():
     client = Client()
     data = {'url': url, 'is_private_mode': is_private_mode, 'client_ip':request.remote_addr}
     client.request_to_proxy(data)
+    res = client.response_from_proxy()
+    print("Response from client is ", res)
     # reseponse_from_proxy....
-    Flask.make_response()
-    response = Flask.HTTPResponse(client.reseponse_from_proxy())
-    response.begin()
-    return response.get_content()
+    # Flask.make_response()
+    # response = Flask.HTTPResponse(client.reseponse_from_proxy())
+    # response.begin()
+    # return response.get_content()
+    return res
 
 if __name__ == '__main__':
     app.run()

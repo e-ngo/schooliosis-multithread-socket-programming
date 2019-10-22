@@ -200,7 +200,7 @@ class Client:
         # receive data
         response = self._receive()
         # handle response(extract headers, return pretty params?...)
-
+        print("Resonse form proxy", response)
         # non-persistent: closer socket afterwards...
         self._disconnect()
         # render HTML

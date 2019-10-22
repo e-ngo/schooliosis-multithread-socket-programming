@@ -53,10 +53,10 @@ class ProxyThread:
         and then proccess the request done by the client
         :return: VOID
         """
-        while True:
-            client_req = self._receive()
-            # parse client_req?
-            self.process_client_request(client_req)
+        # while True:
+        client_req = self._receive()
+        # parse client_req?
+        self.process_client_request(client_req)
 
     def client_id(self):
         """
