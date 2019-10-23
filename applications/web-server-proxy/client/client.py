@@ -31,11 +31,11 @@ def parse_for_field(response, field):
     Given an HTTP Response, parses for certain field...
     """
     lines = response.split("\r\n")
-
+    
     for line in lines:
         # if field == "\r\n":
-        #     # if looking for HTML content...
-            
+            # if looking for HTML content...
+
         if line.startswith(field):
             return line
         

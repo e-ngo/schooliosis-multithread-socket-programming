@@ -34,6 +34,8 @@ def get_user_input():
     # response = Flask.HTTPResponse(client.reseponse_from_proxy())
     # response.begin()
     # return response.get_content()
+    response_object = Flask.make_response(res)
+    print(response_object)
     return res
 
 if __name__ == '__main__':

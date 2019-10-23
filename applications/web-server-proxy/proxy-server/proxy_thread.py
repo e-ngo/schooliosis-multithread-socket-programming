@@ -93,7 +93,9 @@ class ProxyThread:
        :return: VOID
        """
        print(data)
-       self._send("""<html><head><title>Blah</title></head><body>Boo</body></html>""")
+       # sample response
+       self._send("""HTTP/1.1 200 OK\r\nDate: Tue, 22 Oct 2019 06:40:46 GMT\r\nServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.2k-fips PHP/5.4.16 mod_perl/2.0.10 Perl/v5.16.3\r\nX-Powered-By: PHP/5.4.16\r\nContent-Length: 7097\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><head><title>Blah</title></head><body>Boo</body></html>""")
+           
        self.client.close()
 
     @network_exception_handler
