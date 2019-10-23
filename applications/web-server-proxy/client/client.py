@@ -50,7 +50,7 @@ class Client:
     BUFFER_SIZE = 4096
     # ProxyServer constants
     SERVER_HOST = '127.0.0.1'
-    SERVER_PORT = 12000
+    SERVER_PORT = 12001
 
     def __init__(self):
         self.init_socket()
@@ -159,30 +159,9 @@ class Client:
         if len(body):
             # if there is body...
             content_length = len(body)
-            http_request = f"""\
-            POST {original_url} HTTP/1.1\r
-            Host: {data['client_ip']}\r
-            Accept: text/html,application/xhtml+xml\r
-            Accept-Language: en-us,en;q=0.5\r
-            Accept-Encoding: gzip,deflate\r
-            Accept-Charset: ISO-8859-1,utf-8;q=0.7\r
-            Keep-Alive: 0\r
-            Connection: close\r
-            Content-Type: application/x-www-form-urlencoded\r
-            Content-Length: {content_length}\r
-            \r
-            {body}"""
+            http_request = f"""POST {original_url} HTTP/1.1\r\nHost: {data['client_ip']}\r\nAccept: text/html,application/xhtml+xml\r\nAccept-Language: en-us,en;q=0.5\r\nAccept-Encoding: gzip,deflate\r\nAccept-Charset: ISO-8859-1,utf-8;q=0.7\r\nKeep-Alive: 0\r\nConnection: close\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: {content_length}\r\n\r\n{body}"""
         else:
-            http_request = f"""\
-            GET {original_url} HTTP/1.1\r
-            Host: {data['client_ip']}\r
-            Accept: text/html,application/xhtml+xml\r
-            Accept-Language: en-us,en;q=0.5\r
-            Accept-Encoding: gzip,deflate\r
-            Accept-Charset: ISO-8859-1,utf-8;q=0.7\r
-            Keep-Alive: 0\r
-            Connection: close\r
-            \r\n"""
+            http_request = f"""GET {original_url} HTTP/1.1\r\nHost: {data['client_ip']}\r\nAccept: text/html,application/xhtml+xml\r\nAccept-Language: en-us,en;q=0.5\r\nAccept-Encoding: gzip,deflate\r\nAccept-Charset: ISO-8859-1,utf-8;q=0.7\r\nKeep-Alive: 0\r\nConnection: close\r\n\r\n"""
         # connect to ProxyServer
         self._connect_to_server(self.SERVER_HOST, self.SERVER_PORT)
         # send info to ProxyServer

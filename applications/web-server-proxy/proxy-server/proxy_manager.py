@@ -35,7 +35,7 @@ class ProxyManager:
         :param passw: 
         :return: VOID
         """
-        return 0
+        self.proxy_admins.append({'email':email, 'passw':passw})
 
 
     def list_of_admins(self):
@@ -43,7 +43,7 @@ class ProxyManager:
         
         :return: the list of admins
         """
-        return 0
+        return self.proxy_admins
 
     def is_admin(self, email, passw):
         """

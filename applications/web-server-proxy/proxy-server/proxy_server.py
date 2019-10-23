@@ -4,7 +4,7 @@ from proxy_thread import ProxyThread
 class ProxyServer:
 
     HOST = '127.0.0.1'
-    PORT = 12000
+    PORT = 12001
     BACKLOG = 50
     MAX_DATA_RECV = 4096
 
