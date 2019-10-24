@@ -28,7 +28,6 @@ def get_user_input():
     data = {'url': url, 'is_private_mode': is_private_mode, 'client_ip':request.remote_addr}
     client.request_to_proxy(data)
     res = client.response_from_proxy()
-    print("Response from client is ", res)
     # reseponse_from_proxy....
     # Flask.make_response()
     # response = Flask.HTTPResponse(client.reseponse_from_proxy())

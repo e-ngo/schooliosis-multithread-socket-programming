@@ -1,5 +1,6 @@
 import os,sys,threading,socket
 from proxy_thread import ProxyThread
+import urllib
 
 class ProxyServer:
 

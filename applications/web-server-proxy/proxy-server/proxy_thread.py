@@ -46,6 +46,21 @@ class ProxyThread:
     def get_settings(self):
         return self.proxy_manager
 
+    def is_non_persistent(self, http_request_string):
+        """
+        Determines whether or not given http_request_string has
+        persistent features (Connection: Open, etc., 1.0, etc..)
+        """
+        pass
+
+    def is_valid_url(self, http_request_string):
+        """
+        Determines whether or not given http_request_string has
+        a valid url
+        """
+        pass
+
+
     def init_thread(self):
         """
         this is where you put your thread ready to receive data from the client like in assign #1
@@ -53,10 +68,15 @@ class ProxyThread:
         and then proccess the request done by the client
         :return: VOID
         """
-        # while True:
-        client_req = self._receive()
-        # parse client_req?
-        self.process_client_request(client_req)
+        while True:
+            client_req = self._receive()
+            # parse client_req?
+            self.process_client_request(client_req)
+            if is_non_persistent(client_req) or is_invalid(client_req):
+                break
+        # clean up stuff...
+        self.client.close()
+
 
     def client_id(self):
         """
