@@ -5,7 +5,7 @@ import urllib
 class ProxyServer:
 
     HOST = '127.0.0.1'
-    PORT = 12001
+    PORT = 12002
     BACKLOG = 50
     MAX_DATA_RECV = 4096
 

@@ -12,12 +12,58 @@ import pickle
 # will send post requests if the proxy server requires authentification for some sites.
 import requests
 import socket
+import time
+import validators
 
 class ClientDisconnect(Exception):
     """Signals client disconnect
 
     """
     pass
+
+class ParsingError(Exception):
+    """
+    Signals error when parsing
+    """
+    pass
+
+class InvalidHTTPRequest(Exception):
+    """
+    Signals whether HTTP Request is invalid
+    """
+    pass
+
+def parse_for_field(response, field):
+    """
+    Given an HTTP Response, parses for certain attribute...
+    """
+    lines = response.split("\r\n")
+    # get HTML
+    if field == "\r\n" or field == "body":
+        # if looking for HTML content or POST body parameters...
+        return lines[-1]
+    # get HTTP Method path, and version...
+    if field == "top":
+        # ie. GET / HTTP/1.1
+        return lines[0]
+    if field == "method":
+        # ie. GET
+        return lines[0].split(' ')[0]
+    if field == "url":
+        # ie. /
+        return lines[0].split(' ')[1]
+    if field == "http_version":
+        # ie. 1.1
+        return lines[0].split(' ')[2][5:]
+        
+    for line in lines:
+        try:
+            index = line.index(field)
+            return line[index + len(field) + 2:]
+        except ValueError:
+            pass
+    
+    raise ParsingError(f"Error parsing for field: {field}")
 
 def network_exception_handler(func):
     def wrap_func(*args, **kwargs):
@@ -29,7 +75,7 @@ def network_exception_handler(func):
             print("Client has disconnected")
         except Exception as e:
             print(f"Something went wrong: {e}")
-        raise ClientDisconnect()
+        # raise ClientDisconnect()
     return wrap_func
 
 class ProxyThread:
@@ -37,6 +83,8 @@ class ProxyThread:
     The proxy thread class represents a threaded proxy instance to handle a specific request from a client socket
     """
     BUFFER_SIZE=4096
+    KEEP_ALIVE_TIME=115 # time to keep idle connection alive(seconds)
+    KEEP_ALIVE_REQUESTS=5 # max number of requests made over connection
 
     def __init__(self, conn, client_addr):
         self.proxy_manager = ProxyManager()
@@ -51,14 +99,21 @@ class ProxyThread:
         Determines whether or not given http_request_string has
         persistent features (Connection: Open, etc., 1.0, etc..)
         """
-        pass
+        if parse_for_field(http_request_string, "http_version") == "1.0":
+            return True
+        if parse_for_field(http_request_string, "Connection") == "Keep-Alive":
+            # set keep alive time.
+            self.KEEP_ALIVE_TIME = max(int(parse_for_field(http_request_string, "Keep-Alive")), self.KEEP_ALIVE_TIME)
+            return False
+        return True
 
     def is_valid_url(self, http_request_string):
         """
         Determines whether or not given http_request_string has
         a valid url
         """
-        pass
+        url = parse_for_field(http_request_string, "url")
+        return True if validators.url(url) else False
 
 
     def init_thread(self):
@@ -68,12 +123,25 @@ class ProxyThread:
         and then proccess the request done by the client
         :return: VOID
         """
-        while True:
+        try:
+            # grab first request
             client_req = self._receive()
-            # parse client_req?
-            self.process_client_request(client_req)
-            if is_non_persistent(client_req) or is_invalid(client_req):
-                break
+            non_persistent = self.is_non_persistent(client_req)
+            num_of_requests = 0
+
+            while True:
+                # start timer
+                tick = time.time()
+                self.process_client_request(client_req)
+                # increment number of request/responses
+                num_of_requests += 1
+                # if non_persistent or idle time is up or number of requests exceeded.
+                if non_persistent or time.time() - tick > self.KEEP_ALIVE_TIME or num_of_requests >= self.KEEP_ALIVE_REQUESTS:
+                    break
+                client_req = self._receive()
+        except Exception as e:
+            print("Something has gone wrong w/in loop:", e)
+            # send to client error?
         # clean up stuff...
         self.client.close()
 
@@ -89,6 +157,7 @@ class ProxyThread:
         When private mode, mask ip address to browse in private
         This is easy if you think in terms of client-server sockets
         :return: VOID
+        # ask about ...
         """
         return 0
 
@@ -116,8 +185,6 @@ class ProxyThread:
        # sample response
        self._send("""HTTP/1.1 200 OK\r\nDate: Tue, 22 Oct 2019 06:40:46 GMT\r\nServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.2k-fips PHP/5.4.16 mod_perl/2.0.10 Perl/v5.16.3\r\nX-Powered-By: PHP/5.4.16\r\nContent-Length: 7097\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><head><title>Blah</title></head><body>Boo</body></html>""")
            
-       self.client.close()
-
     @network_exception_handler
     def _send(self, data):
         """
@@ -146,9 +213,11 @@ class ProxyThread:
         """
         HEAD request does not return the HTML of the site
         :param url:
-        :param param: parameters to be appended to the url
+        :param param: parameters to be appended to the url as a mapping.
         :return: the headers of the response from the original server
         """
+        res = requests.head(url, params=param)
+        return res
         
 
     def get_request_to_server(self, url, param):
@@ -158,7 +227,8 @@ class ProxyThread:
         :param param: parameters to be appended to the url
         :return: the complete response including the body of the response
         """
-        return 0
+        res = requests.get(url, params=param)
+        return res
 
 
     def response_from_server(self, request):
@@ -181,12 +251,12 @@ class ProxyThread:
         :param data: a response created by the proxy. Please check slides for response format
         :return: VOID
         """
-        return 0
+        """HTTP/1.1 200 OK\r\nDate: Tue, 22 Oct 2019 06:40:46 GMT\r\nServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.2k-fips PHP/5.4.16 mod_perl/2.0.10 Perl/v5.16.3\r\nX-Powered-By: PHP/5.4.16\r\nContent-Length: 7097\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><head><title>Blah</title></head><body>Boo</body></html>"""
 
     def create_response_for_client(self):
         """
         
         :return: the response that will be passed as a parameter to the method send_response_to_client()
         """
-        return 0
+        """HTTP/1.1 200 OK\r\nDate: Tue, 22 Oct 2019 06:40:46 GMT\r\nServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.2k-fips PHP/5.4.16 mod_perl/2.0.10 Perl/v5.16.3\r\nX-Powered-By: PHP/5.4.16\r\nContent-Length: 7097\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><head><title>Blah</title></head><body>Boo</body></html>"""
 

@@ -38,7 +38,6 @@ def parse_for_field(response, field):
 
         if line.startswith(field):
             return line
-        
     
     raise ParsingError(f"Error parsing for field: {field}")
 
@@ -50,7 +49,7 @@ class Client:
     BUFFER_SIZE = 4096
     # ProxyServer constants
     SERVER_HOST = '127.0.0.1'
-    SERVER_PORT = 12001
+    SERVER_PORT = 12002
 
     def __init__(self):
         self.init_socket()
