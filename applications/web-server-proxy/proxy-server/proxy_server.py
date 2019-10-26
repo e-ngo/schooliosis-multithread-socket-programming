@@ -10,7 +10,7 @@ class ProxyServer:
     MAX_DATA_RECV = 4096
 
     def __init__(self):
-        self.clients = []
+        self.clients = {}
 
     def run(self):
         try:
@@ -35,6 +35,7 @@ class ProxyServer:
        :return: 
         """
         client_sock, addr = server_socket.accept()
+        # self.clients[addr[1]] = client_sock
         print(f"Client {addr} has connected!")
         thread = threading.Thread(target=self.proxy_thread, args=(client_sock, addr))
         thread.start()
@@ -52,6 +53,7 @@ class ProxyServer:
         """
         proxy_thread = ProxyThread(conn, client_addr)
         proxy_thread.init_thread()
+        # del self.clients[client_addr[1]]
 
 if __name__=="__main__":
     server = ProxyServer()

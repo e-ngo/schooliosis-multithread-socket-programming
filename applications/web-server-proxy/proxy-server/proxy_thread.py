@@ -2,7 +2,7 @@
 Proxy thread file. Implements the proxy thread class and all its functionality. 
 """
 
-from proxy_manager import ProxyManager
+from .proxy_manager import ProxyManager
 import pickle
 # IMPORTANT READ BELOW NOTES. Otherwise, it may affect negatively your grade in this assignment
 # Note about requests library
@@ -32,6 +32,43 @@ class InvalidHTTPRequest(Exception):
     Signals whether HTTP Request is invalid
     """
     pass
+
+def extract_query_params(url, explicit_field=""):
+    """
+    Splits url into its path and its query parameters
+    ie. google.com/blah?v=3 => (google.com/blah, ?v=3)
+    :return: (url, query_params)
+    """
+    # if explicit_field:
+    last_instance = url.rfind("?")
+    if last_instance < 0:
+        return (url, "")
+    substr = url[last_instance+1:]
+    if explicit_field:
+        # if requires parameter to start with certain field...
+        if not substr.startswith(explicit_field):
+            return (url, "")
+    return (url[:last_instance], substr)
+
+def params_to_map(data):
+    """
+    Parses a query parameter or POST body parameter into map
+    """
+    # needs to be at least s=1
+    if len(data) < 3:
+        return {}
+    # remove ?
+    data = data[1:] if data[0] == "?" else data
+    fields = data.split('&')
+    mapping = {}
+    for field in fields:
+        try:
+            k, v = field.split('=')
+        except ValueError:
+            # if error parsing split
+            return {}
+        mapping[k] = v
+    return mapping
 
 def parse_for_field(response, field):
     """
@@ -99,11 +136,15 @@ class ProxyThread:
         Determines whether or not given http_request_string has
         persistent features (Connection: Open, etc., 1.0, etc..)
         """
-        if parse_for_field(http_request_string, "http_version") == "1.0":
+        if parse_for_field(http_request_string, "http_version") != "1.1":
             return True
         if parse_for_field(http_request_string, "Connection") == "Keep-Alive":
             # set keep alive time.
-            self.KEEP_ALIVE_TIME = max(int(parse_for_field(http_request_string, "Keep-Alive")), self.KEEP_ALIVE_TIME)
+            try:
+                self.KEEP_ALIVE_TIME = min(int(parse_for_field(http_request_string, "Keep-Alive")), self.KEEP_ALIVE_TIME)
+            except ParsingError:
+                # Keep-Alive field does not exist. Use default timeout
+                pass
             return False
         return True
 
@@ -114,7 +155,6 @@ class ProxyThread:
         """
         url = parse_for_field(http_request_string, "url")
         return True if validators.url(url) else False
-
 
     def init_thread(self):
         """
@@ -145,7 +185,6 @@ class ProxyThread:
         # clean up stuff...
         self.client.close()
 
-
     def client_id(self):
         """
         :return: the client id
@@ -158,32 +197,49 @@ class ProxyThread:
         This is easy if you think in terms of client-server sockets
         :return: VOID
         # ask about ...
+        https://realpython.com/python-requests/
         """
         return 0
 
-    def process_client_request(self, data):
-       """
-       Main algorithm. Note that those are high level steps, and most of them may
-       require futher implementation details
-       1. get url and private mode status from client 
-       2. if private mode, then mask ip address: mask_ip_address method
-       3. check if the resource (site) is in cache. If so and not private mode, then:
-           3.1 check if site is blocked for this employee 
-           3.2 check if site require credentials for this employee
-           3.3 if 3.1 or 3.2 then then client needs to send a post request to proxy
-               with credentials to check 3.1 and 3.2 access 
-               3.3.1 if credentials are valid, send a HEAD request to the original server
-                     to check last_date_modified parameter. If the cache header for that 
-                     site is outdated then move to step 4. Otherwise, send a response to the 
-                     client with the requested site and the appropiate status code.
+    def process_client_request(self, http_request_string):
+        """
+        Main algorithm. Note that those are high level steps, and most of them may
+        require futher implementation details
+        1. get url and private mode status from client 
+        2. if private mode, then mask ip address: mask_ip_address method
+        3. check if the resource (site) is in cache. If so and not private mode, then:
+            3.1 check if site is blocked for this employee 
+            3.2 check if site require credentials for this employee
+            3.3 if 3.1 or 3.2 then then client needs to send a post request to proxy
+                with credentials to check 3.1 and 3.2 access 
+                3.3.1 if credentials are valid, send a HEAD request to the original server
+                        to check last_date_modified parameter. If the cache header for that 
+                        site is outdated then move to step 4. Otherwise, send a response to the 
+                        client with the requested site and the appropiate status code.
         4. If site is not in cache, or last_data_modified is outdated, then create a GET request 
-           to the original server, and store in cache the reponse from the server. 
-       :param data: 
-       :return: VOID
-       """
-       print(data)
-       # sample response
-       self._send("""HTTP/1.1 200 OK\r\nDate: Tue, 22 Oct 2019 06:40:46 GMT\r\nServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.2k-fips PHP/5.4.16 mod_perl/2.0.10 Perl/v5.16.3\r\nX-Powered-By: PHP/5.4.16\r\nContent-Length: 7097\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><head><title>Blah</title></head><body>Boo</body></html>""")
+            to the original server, and store in cache the reponse from the server. 
+        :param http_request_string: 
+        :return: VOID
+        """
+        # make sure correct parameters?
+        http_version = parse_for_field(http_request_string, "http_version")
+        if http_version != "1.0" or http_version != "1.1":
+            # complain
+            pass
+        url = parse_for_field(http_request_string, "url")
+        url, query_params = extract_query_params(url, "is_private_mode")
+
+        query_params = params_to_map(query_params)
+
+        if int(query_params["is_private_mode"]) == 1:
+            # if private mode, mask ip. how to?
+            pass
+
+
+            
+        print(http_request_string)
+        # sample response
+        self._send("""HTTP/1.1 200 OK\r\nDate: Tue, 22 Oct 2019 06:40:46 GMT\r\nServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.2k-fips PHP/5.4.16 mod_perl/2.0.10 Perl/v5.16.3\r\nX-Powered-By: PHP/5.4.16\r\nContent-Length: 7097\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><head><title>Blah</title></head><body>Boo</body></html>""")
            
     @network_exception_handler
     def _send(self, data):
@@ -217,6 +273,8 @@ class ProxyThread:
         :return: the headers of the response from the original server
         """
         res = requests.head(url, params=param)
+        print("HEAD to", url)
+        print(res)
         return res
         
 
@@ -228,6 +286,8 @@ class ProxyThread:
         :return: the complete response including the body of the response
         """
         res = requests.get(url, params=param)
+        print("GET to", url)
+        print(res)
         return res
 
 
@@ -260,3 +320,6 @@ class ProxyThread:
         """
         """HTTP/1.1 200 OK\r\nDate: Tue, 22 Oct 2019 06:40:46 GMT\r\nServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.2k-fips PHP/5.4.16 mod_perl/2.0.10 Perl/v5.16.3\r\nX-Powered-By: PHP/5.4.16\r\nContent-Length: 7097\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><head><title>Blah</title></head><body>Boo</body></html>"""
 
+if __name__=="__main__":
+    d, k = extract_query_params("gogole.com/dsf?s=5", "s")
+    print(params_to_map(k))

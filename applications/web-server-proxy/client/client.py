@@ -160,7 +160,7 @@ class Client:
             content_length = len(body)
             http_request = f"""POST {original_url} HTTP/1.1\r\nHost: {data['client_ip']}\r\nAccept: text/html,application/xhtml+xml\r\nAccept-Language: en-us,en;q=0.5\r\nAccept-Encoding: gzip,deflate\r\nAccept-Charset: ISO-8859-1,utf-8;q=0.7\r\nKeep-Alive: 0\r\nConnection: close\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: {content_length}\r\n\r\n{body}"""
         else:
-            http_request = f"""GET {original_url} HTTP/1.1\r\nHost: {data['client_ip']}\r\nAccept: text/html,application/xhtml+xml\r\nAccept-Language: en-us,en;q=0.5\r\nAccept-Encoding: gzip,deflate\r\nAccept-Charset: ISO-8859-1,utf-8;q=0.7\r\nKeep-Alive: 0\r\nConnection: close\r\n\r\n"""
+            http_request = f"""GET {original_url} HTTP/1.1\r\nHost: {data['client_ip']}\r\nAccept: text/html,application/xhtml+xml\r\nAccept-Language: en-us,en;q=0.5\r\nAccept-Encoding: gzip,deflate\r\nAccept-Charset: ISO-8859-1,utf-8;q=0.7\r\nKeep-Alive: 0\r\nConnection: Close\r\n\r\n"""
         # connect to ProxyServer
         self._connect_to_server(self.SERVER_HOST, self.SERVER_PORT)
         # send info to ProxyServer
@@ -180,13 +180,16 @@ class Client:
         # handle response(extract headers, return pretty params?...)
         print("Resonse form proxy", response)
         # non-persistent: closer socket afterwards...
-        self._disconnect()
+        # self._disconnect()
         # render HTML
         return response
 
 if __name__=="__main__":
     # test script
     client = Client()
-    client.request_to_proxy({'url': 'https://google.com/', 'is_private_mode': False, 'client_ip': '127.0.0.1'})
+    client.request_to_proxy({'url': 'https://google.com/', 'is_private_mode': 0, 'client_ip': '127.0.0.1'})
     res = client.response_from_proxy()
     print(res)
+    # import time
+    # time.sleep(10)
+    client._disconnect()
