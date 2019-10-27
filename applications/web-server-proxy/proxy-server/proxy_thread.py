@@ -2,7 +2,7 @@
 Proxy thread file. Implements the proxy thread class and all its functionality. 
 """
 
-from .proxy_manager import ProxyManager
+from proxy_manager import ProxyManager
 import pickle
 # IMPORTANT READ BELOW NOTES. Otherwise, it may affect negatively your grade in this assignment
 # Note about requests library
@@ -70,37 +70,51 @@ def params_to_map(data):
         mapping[k] = v
     return mapping
 
-def parse_for_field(response, field):
+def parse_for_field(response, field = ""):
     """
     Given an HTTP Response, parses for certain attribute...
     """
     lines = response.split("\r\n")
+    map = {}
+
+    map["body"] = lines[-1]
     # get HTML
-    if field == "\r\n" or field == "body":
-        # if looking for HTML content or POST body parameters...
-        return lines[-1]
+    # if field == "body":
+    #     # if looking for HTML content or POST body parameters...
+    #     return map["body"]
+
+    map["top"] = lines[0]
     # get HTTP Method path, and version...
-    if field == "top":
-        # ie. GET / HTTP/1.1
-        return lines[0]
-    if field == "method":
-        # ie. GET
-        return lines[0].split(' ')[0]
-    if field == "url":
-        # ie. /
-        return lines[0].split(' ')[1]
-    if field == "http_version":
-        # ie. 1.1
-        return lines[0].split(' ')[2][5:]
-        
-    for line in lines:
-        try:
-            index = line.index(field)
-            return line[index + len(field) + 2:]
-        except ValueError:
-            pass
-    
-    raise ParsingError(f"Error parsing for field: {field}")
+    # if field == "top":
+    #     # ie. GET / HTTP/1.1
+    #     return map["top"]
+
+    map["method"] = lines[0].split(' ')[0]
+    # if field == "method":
+    #     # ie. GET
+    #     return map["method"]
+
+    map["url"] = lines[0].split(' ')[1]
+    # if field == "url":
+    #     # ie. /
+    #     return map["url"]
+
+    map["http_version"] = lines[0].split(' ')[2][5:]
+    # if field == "http_version":
+    #     # ie. 1.1
+    #     return map["http_version"]
+
+    for i in range(1, len(lines) - 1):
+        # for each line not header and body
+        k, v = lines[i].split(": ")
+        map[k] = v
+
+    if field == "":
+        return map
+    try:
+        return map[field]
+    except KeyError:
+        raise ParsingError(f"Error parsing for field: {field}")
 
 def network_exception_handler(func):
     def wrap_func(*args, **kwargs):
@@ -120,13 +134,15 @@ class ProxyThread:
     The proxy thread class represents a threaded proxy instance to handle a specific request from a client socket
     """
     BUFFER_SIZE=4096
-    KEEP_ALIVE_TIME=115 # time to keep idle connection alive(seconds)
     KEEP_ALIVE_REQUESTS=5 # max number of requests made over connection
 
     def __init__(self, conn, client_addr):
         self.proxy_manager = ProxyManager()
         self.client = conn
         self.client_id = client_addr[1]
+        self.permission = False # whether or not user is authenticated
+        self.role = "" # role of user "CEO, CTO, etc.."
+        self.KEEP_ALIVE_TIME=115 # time to keep idle connection alive(seconds)
 
     def get_settings(self):
         return self.proxy_manager
@@ -179,8 +195,14 @@ class ProxyThread:
                 if non_persistent or time.time() - tick > self.KEEP_ALIVE_TIME or num_of_requests >= self.KEEP_ALIVE_REQUESTS:
                     break
                 client_req = self._receive()
+        except socket.timeout:
+            print("Client {} has timed out.".format(self.client_id))
+        except socket.error as sock_error:
+            print(f"An HTTPError occurred: {sock_error}")
+        except ClientDisconnect:
+            print("Client has disconnected")
         except Exception as e:
-            print("Something has gone wrong w/in loop:", e)
+            print(f"Something went wrong: {e}")
             # send to client error?
         # clean up stuff...
         self.client.close()
@@ -200,6 +222,86 @@ class ProxyThread:
         https://realpython.com/python-requests/
         """
         return 0
+    
+    def respond_ok(self, params):
+        """
+        Sends 200 response to client
+        """
+        pass
+
+    def respond_not_modified(self, params):
+        """
+        Sends 304 response to client
+        """
+        pass
+    def respond_unauthorized(self, params):
+        """
+        Sends 401 response to client
+        """
+        # response should include Proxy-Authenticate: Basic realm="proxyserver"
+        pass
+    def respond_bad_request(self, params):
+        """
+        Sends 400 response to client
+        """
+        pass
+    def respond_not_found(self, params):
+        """
+        Sends 404 response to client
+        """
+        pass
+    def respond_need_auth(self, params):
+        """
+        Sends 407 response to client
+        """
+        pass
+    def respond_forbidden(self, params):
+        """
+        Sends 403 response to client
+        """
+        pass
+
+    def handle_client_response(self, code, params):
+        """
+        Handles which response to send to users given code.
+        """
+        if code == 200:
+            self.respond_ok(params)
+        elif code == 304:
+            self.respond_not_modified(params)
+        elif code == 401:
+            self.respond_unauthorized(params)
+        elif code == 400:
+            self.respond_bad_request(params)
+        elif code == 404:
+            self.respond_not_found(params)
+        elif code == 407:
+            self.respond_need_auth(params)
+        elif code == 403:
+            self.respond_forbidden(params)
+        else:
+            raise Exception("Code not understood")
+    
+    def check_permissions(self, resource):
+        """
+        Because after login, user role is known, check proxy manager to see if userrole
+        is allowed access to resource.
+        :return: Bool if user is able to access resource.
+        """
+        if resource != "god"
+            return True
+        return False
+
+    def login(self, username, password):
+        """
+        Gets userrole from proxy manager, returns True if user is authorized
+        """
+        # check proxymanager if user/pw is in db.
+        if username == "Bob" and password == "123":
+            # self.proxy_manager
+            self.role = "CEO"
+            return True
+        return False
 
     def process_client_request(self, http_request_string):
         """
@@ -221,27 +323,56 @@ class ProxyThread:
         :param http_request_string: 
         :return: VOID
         """
-        # make sure correct parameters?
-        http_version = parse_for_field(http_request_string, "http_version")
-        if http_version != "1.0" or http_version != "1.1":
-            # complain
-            pass
-        url = parse_for_field(http_request_string, "url")
-        url, query_params = extract_query_params(url, "is_private_mode")
+        try:
+            request_map = parse_for_field(http_request_string)
+            # make sure correct parameters?
+            http_version = request_map["http_version"]
+            method = request_map["method"]
+            if http_version != "1.0" or http_version != "1.1":
+                # complain
+                pass
 
-        query_params = params_to_map(query_params)
+            url = request_map["url"]
+            url, query_params = extract_query_params(url, "is_private_mode")
 
-        if int(query_params["is_private_mode"]) == 1:
-            # if private mode, mask ip. how to?
-            pass
+            query_params = params_to_map(query_params)
+            # holds data needed to parse in respond
+            response_params = { 'request_map': request_map  }
 
+            ip = request_map[]
 
+            if int(query_params["is_private_mode"]) == 1:
+                # if private mode, mask ip. how to?
+                # make sure authed
+                # if not self.permission:
+                    # ask for permissions
+                if request_map["method"] != "POST":
+                    # if not an attempt to login, ask to login
+                    self.handle_client_response(407, response_params)
+                    return ;
+                body = request_map["params"]
+                post_params = params_to_map(body)
+
+                username = post_params["user_name"]
+                password = post_params["password"]
+                self.permission = self.login(username, password)
+
+                if not self.permission:
+                    # insufficient permissions
+                    self.handle_client_response(401, response_params)
+                    return ;
             
-        print(http_request_string)
-        # sample response
-        self._send("""HTTP/1.1 200 OK\r\nDate: Tue, 22 Oct 2019 06:40:46 GMT\r\nServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.2k-fips PHP/5.4.16 mod_perl/2.0.10 Perl/v5.16.3\r\nX-Powered-By: PHP/5.4.16\r\nContent-Length: 7097\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><head><title>Blah</title></head><body>Boo</body></html>""")
+                response = self.get_request_to_server(url)
+            else:
+
+            print(http_request_string)
+            # sample response
+            self._send("""HTTP/1.1 200 OK\r\nDate: Tue, 22 Oct 2019 06:40:46 GMT\r\nServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.2k-fips PHP/5.4.16 mod_perl/2.0.10 Perl/v5.16.3\r\nX-Powered-By: PHP/5.4.16\r\nContent-Length: 7097\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><head><title>Blah</title></head><body>Boo</body></html>""")
+        except ParsingError:
+            # this is encountered when during parsing of the headers, there is an error.
+            # In this case, a 400 Bad Request is sent back to client.
+            self.handle_client_response(400, {})
            
-    @network_exception_handler
     def _send(self, data):
         """
         Serialialize data 
@@ -252,12 +383,12 @@ class ProxyThread:
         data_serialized = pickle.dumps(data)
         self.client.send(data_serialized)
 
-    @network_exception_handler
     def _receive(self):
         """
         deserialize the data 
         :return: the deserialized data
         """
+        self.client.settimeout(self.KEEP_ALIVE_TIME)
         client_request = self.client.recv(self.BUFFER_SIZE)
         if not client_request:
             raise ClientDisconnect()
@@ -278,17 +409,19 @@ class ProxyThread:
         return res
         
 
-    def get_request_to_server(self, url, param):
+    def get_request_to_server(self, url, param=None):
         """
         GET request
         :param url: 
-        :param param: parameters to be appended to the url
+        # :param param: parameters to be appended to the url
         :return: the complete response including the body of the response
         """
-        res = requests.get(url, params=param)
+        with requests.Session() as session:
+            response = session.get(url)
+        # res = requests.get(url)#, params=param)
         print("GET to", url)
-        print(res)
-        return res
+        print(response)
+        return response
 
 
     def response_from_server(self, request):

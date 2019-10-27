@@ -26,8 +26,14 @@ class ProxyServer:
             
         except socket.error as sock_error:
             print(sock_error)
+        except KeyboardInterrupt:
+            pass
+        except Exception as e:
+            print("An exception has occurred", e)
 
         server_socket.close()
+        print("Closing the proxy server")
+        os._exit(0)
 
     def accept_clients(self, server_socket):
         """
@@ -51,9 +57,11 @@ class ProxyServer:
         :param client_addr: 
         :return: 
         """
+        print("Thread {} started".format(client_addr[1]))
         proxy_thread = ProxyThread(conn, client_addr)
         proxy_thread.init_thread()
         # del self.clients[client_addr[1]]
+        print("Thread {} ended".format(client_addr[1]))
 
 if __name__=="__main__":
     server = ProxyServer()
