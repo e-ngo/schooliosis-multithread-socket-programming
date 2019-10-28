@@ -58,7 +58,7 @@ class ProxyServer:
         :return: 
         """
         print("Thread {} started".format(client_addr[1]))
-        proxy_thread = ProxyThread(conn, client_addr)
+        proxy_thread = ProxyThread(conn, client_addr, self.HOST)
         proxy_thread.init_thread()
         # del self.clients[client_addr[1]]
         print("Thread {} ended".format(client_addr[1]))

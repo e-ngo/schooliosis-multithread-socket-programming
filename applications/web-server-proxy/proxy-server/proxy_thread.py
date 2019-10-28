@@ -105,10 +105,12 @@ def parse_for_field(response, field = ""):
     #     return map["http_version"]
 
     for i in range(1, len(lines) - 1):
-        # for each line not header and body
-        k, v = lines[i].split(": ")
-        map[k] = v
-
+        try:
+            # for each line not header and body
+            k, v = lines[i].split(": ")
+            map[k] = v
+        except ValueError:
+            pass
     if field == "":
         return map
     try:
@@ -136,13 +138,15 @@ class ProxyThread:
     BUFFER_SIZE=4096
     KEEP_ALIVE_REQUESTS=5 # max number of requests made over connection
 
-    def __init__(self, conn, client_addr):
+    def __init__(self, conn, client_addr, server_ip):
         self.proxy_manager = ProxyManager()
         self.client = conn
         self.client_id = client_addr[1]
+        self.client_ip = ""
         self.permission = False # whether or not user is authenticated
-        self.role = "" # role of user "CEO, CTO, etc.."
+        self.role = "EMPLOYEE" # role of user "CEO, CTO, etc.." Default is EMPLOYEE
         self.KEEP_ALIVE_TIME=115 # time to keep idle connection alive(seconds)
+        self.server_ip = server_ip
 
     def get_settings(self):
         return self.proxy_manager
@@ -213,7 +217,7 @@ class ProxyThread:
         """
         return self.client_id
 
-    def _mask_ip_adress(self):
+    def _mask_ip_address(self):
         """
         When private mode, mask ip address to browse in private
         This is easy if you think in terms of client-server sockets
@@ -221,7 +225,7 @@ class ProxyThread:
         # ask about ...
         https://realpython.com/python-requests/
         """
-        return 0
+        self.client_ip = self.server_ip
     
     def respond_ok(self, params):
         """
@@ -288,14 +292,16 @@ class ProxyThread:
         is allowed access to resource.
         :return: Bool if user is able to access resource.
         """
-        if resource != "god"
+        if resource != "god":
             return True
         return False
 
-    def login(self, username, password):
+    def login(self, username, password, mask=False):
         """
         Gets userrole from proxy manager, returns True if user is authorized
         """
+        if mask:
+            self._mask_ip_address()
         # check proxymanager if user/pw is in db.
         if username == "Bob" and password == "123":
             # self.proxy_manager
@@ -338,36 +344,44 @@ class ProxyThread:
             query_params = params_to_map(query_params)
             # holds data needed to parse in respond
             response_params = { 'request_map': request_map  }
-
-            ip = request_map[]
+            # get client's ip
+            self.client_ip = request_map["Host"]
 
             if int(query_params["is_private_mode"]) == 1:
-                # if private mode, mask ip. how to?
                 # make sure authed
-                # if not self.permission:
+                if not self.permissions:
                     # ask for permissions
-                if request_map["method"] != "POST":
-                    # if not an attempt to login, ask to login
-                    self.handle_client_response(407, response_params)
-                    return ;
-                body = request_map["params"]
-                post_params = params_to_map(body)
+                    if request_map["method"] != "POST":
+                        # if not an attempt to login and not logged in, ask to login
+                        self.handle_client_response(407, response_params)
+                        return ;
 
-                username = post_params["user_name"]
-                password = post_params["password"]
-                self.permission = self.login(username, password)
+                    body = request_map["params"]
+                    post_params = params_to_map(body)
 
-                if not self.permission:
-                    # insufficient permissions
-                    self.handle_client_response(401, response_params)
-                    return ;
-            
-                response = self.get_request_to_server(url)
+                    username = post_params["user_name"]
+                    password = post_params["password"]
+                    self.permission = self.login(username, password, mask=True)
+
+                    if not self.permission:
+                        # insufficient permissions
+                        self.handle_client_response(401, response_params)
+                        return ;
+                # user has sufficient permissions at this point.            
+                response = self.get_request_to_server(url, request_map)
             else:
+                response = self.get_request_to_server(url, request_map)
+            if 200<=response.status_code< 300 or response.status_code == 304:
+                # check exists
+                response_params['response'] = response
 
+                self.respond_ok()
+            else:
+                
             print(http_request_string)
+            # Check response... 
             # sample response
-            self._send("""HTTP/1.1 200 OK\r\nDate: Tue, 22 Oct 2019 06:40:46 GMT\r\nServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.2k-fips PHP/5.4.16 mod_perl/2.0.10 Perl/v5.16.3\r\nX-Powered-By: PHP/5.4.16\r\nContent-Length: 7097\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><head><title>Blah</title></head><body>Boo</body></html>""")
+            # self._send("""HTTP/1.1 200 OK\r\nDate: Tue, 22 Oct 2019 06:40:46 GMT\r\nServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.2k-fips PHP/5.4.16 mod_perl/2.0.10 Perl/v5.16.3\r\nX-Powered-By: PHP/5.4.16\r\nContent-Length: 7097\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><head><title>Blah</title></head><body style="color:red;">Boo</body></html>""")
         except ParsingError:
             # this is encountered when during parsing of the headers, there is an error.
             # In this case, a 400 Bad Request is sent back to client.

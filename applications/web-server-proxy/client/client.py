@@ -46,7 +46,7 @@ class Client:
     This class represents your client class that will send requests to the proxy server and will hand the responses to 
     the user to be rendered by the browser, 
     """
-    BUFFER_SIZE = 4096
+    BUFFER_SIZE = 65536
     # ProxyServer constants
     SERVER_HOST = '127.0.0.1'
     SERVER_PORT = 12002
@@ -156,16 +156,16 @@ class Client:
             pass
 
         # auth:
-        username = ""
-        password = ""
-        "Proxy-Authorization: Basic {}:{}".format(username, password)
+        # username = ""
+        # password = ""
+        # "Proxy-Authorization: Basic {}:{}".format(username, password)
 
         if len(body):
             # if there is body...
             content_length = len(body)
-            http_request = f"""POST {original_url} HTTP/1.1\r\nHost: {data['client_ip']}\r\nAccept: text/html,application/xhtml+xml\r\nAccept-Language: en-us,en;q=0.5\r\nAccept-Encoding: gzip,deflate\r\nAccept-Charset: ISO-8859-1,utf-8;q=0.7\r\nKeep-Alive: 0\r\nConnection: close\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: {content_length}\r\n\r\n{body}"""
+            http_request = f"""POST {original_url} {data['http_version']}\r\nHost: {data['client_ip']}\r\nAccept: text/html,application/xhtml+xml\r\nAccept-Language: en-us,en;q=0.5\r\nAccept-Encoding: gzip,deflate\r\nAccept-Charset: ISO-8859-1,utf-8;q=0.7\r\nKeep-Alive: 0\r\nConnection: close\r\nContent-Type: application/x-www-form-urlencoded\r\nContent-Length: {content_length}\r\n\r\n{body}"""
         else:
-            http_request = f"""GET {original_url} HTTP/1.1\r\nHost: {data['client_ip']}\r\nAccept: text/html,application/xhtml+xml\r\nAccept-Language: en-us,en;q=0.5\r\nAccept-Encoding: gzip,deflate\r\nAccept-Charset: ISO-8859-1,utf-8;q=0.7\r\nKeep-Alive: 5\r\nConnection: Keep-Alive\r\n\r\n"""
+            http_request = f"""GET {original_url} {data['http_version']}\r\nHost: {data['client_ip']}\r\nAccept: text/html,application/xhtml+xml\r\nAccept-Language: en-us,en;q=0.5\r\nAccept-Encoding: gzip,deflate\r\nAccept-Charset: ISO-8859-1,utf-8;q=0.7\r\nKeep-Alive: 5\r\nConnection: Keep-Alive\r\n\r\n"""
         # connect to ProxyServer
         self._connect_to_server(self.SERVER_HOST, self.SERVER_PORT)
         # send info to ProxyServer
@@ -192,12 +192,12 @@ class Client:
 if __name__=="__main__":
     # test script
     client = Client()
-    client.request_to_proxy({'url': 'https://google.com/', 'is_private_mode': 0, 'client_ip': '127.0.0.1'})
+    client.request_to_proxy({'url': 'https://google.com/', 'is_private_mode': 0, 'client_ip': '127.0.0.1', 'http_version': '1.1'})
     res = client.response_from_proxy()
     print(res)
     import time
     time.sleep(3)
-    client.request_to_proxy({'url': 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Authentication', 'is_private_mode': 1, 'client_ip': '127.0.0.1'})
+    client.request_to_proxy({'url': 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Authentication', 'is_private_mode': 1, 'client_ip': '127.0.0.1', 'http_version': '1.1'})
     res = client.response_from_proxy()
     print(res)
     time.sleep(6)

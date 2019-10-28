@@ -1,5 +1,4 @@
-from flask import Flask
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, Response
 import requests
 from client.client import Client
 
@@ -25,7 +24,7 @@ def get_user_input():
 
     # makes new client. request_to_proxy....
     client = Client()
-    data = {'url': url, 'is_private_mode': is_private_mode, 'client_ip':request.remote_addr}
+    data = {'url': url, 'is_private_mode': is_private_mode, 'client_ip':request.remote_addr, 'http_version': request.environ.get('SERVER_PROTOCOL')}
     client.request_to_proxy(data)
     res = client.response_from_proxy()
     # reseponse_from_proxy....
@@ -36,8 +35,9 @@ def get_user_input():
     # response_object = Flask.make_response(res)
     # print(response_object)
     # auth
-    
-    return res
+    # res = Response(res)
+    html_body = res.split("\r\n")[-1]
+    return html_body
 
 if __name__ == '__main__':
     app.run()
