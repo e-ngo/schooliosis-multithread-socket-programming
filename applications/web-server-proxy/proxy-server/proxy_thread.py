@@ -205,8 +205,8 @@ class ProxyThread:
             print(f"An HTTPError occurred: {sock_error}")
         except ClientDisconnect:
             print("Client has disconnected")
-        except Exception as e:
-            print(f"Something went wrong: {e}")
+        # except Exception as e:
+        #     print(f"Something went wrong: {e}")
             # send to client error?
         # clean up stuff...
         self.client.close()
@@ -222,8 +222,6 @@ class ProxyThread:
         When private mode, mask ip address to browse in private
         This is easy if you think in terms of client-server sockets
         :return: VOID
-        # ask about ...
-        https://realpython.com/python-requests/
         """
         self.client_ip = self.server_ip
     
@@ -231,13 +229,24 @@ class ProxyThread:
         """
         Sends 200 response to client
         """
-        pass
+        req_map = params['request_map']
+        response = params['response']
+        http_version = req_map["http_version"]
+        content_length = len(response.content)
+
+        self._send("HTTP/{} 200 OK\r\nDate: Tue, 22 Oct 2019 06:40:46 GMT\r\nServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.2k-fips PHP/5.4.16 mod_perl/2.0.10 Perl/v5.16.3\r\nX-Powered-By: PHP/5.4.16\r\nContent-Length: {}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n{}".format(http_version, content_length, response.content))
 
     def respond_not_modified(self, params):
         """
         Sends 304 response to client
         """
-        pass
+        # req_map = params['request_map']
+        # response = params['response']
+        # http_version = req_map["http_version"]
+        # content_length = len(response.content)
+
+        # self._send("HTTP/{} 200 OK\r\nDate: Tue, 22 Oct 2019 06:40:46 GMT\r\nServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.2k-fips PHP/5.4.16 mod_perl/2.0.10 Perl/v5.16.3\r\nX-Powered-By: PHP/5.4.16\r\nContent-Length: {}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n{}".format(http_version, content_length, response.content))
+
     def respond_unauthorized(self, params):
         """
         Sends 401 response to client
@@ -370,15 +379,20 @@ class ProxyThread:
                 # user has sufficient permissions at this point.            
                 response = self.get_request_to_server(url, request_map)
             else:
+                # check if cached...
+                # if is_cached(url):
+                # make head request
+                # else:
                 response = self.get_request_to_server(url, request_map)
+
             if 200<=response.status_code< 300 or response.status_code == 304:
                 # check exists
                 response_params['response'] = response
 
-                self.respond_ok()
+                self.handle_client_response(200, response_params)
             else:
-                
-            print(http_request_string)
+                self.handle_client_response(404, response_params)
+            # print(http_request_string)
             # Check response... 
             # sample response
             # self._send("""HTTP/1.1 200 OK\r\nDate: Tue, 22 Oct 2019 06:40:46 GMT\r\nServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.2k-fips PHP/5.4.16 mod_perl/2.0.10 Perl/v5.16.3\r\nX-Powered-By: PHP/5.4.16\r\nContent-Length: 7097\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><head><title>Blah</title></head><body style="color:red;">Boo</body></html>""")
