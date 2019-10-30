@@ -168,14 +168,6 @@ class ProxyThread:
             return False
         return True
 
-    # def is_valid_url(self, http_request_string):
-    #     """
-    #     Determines whether or not given http_request_string has
-    #     a valid url
-    #     """
-    #     url = parse_for_field(http_request_string, "url")
-    #     return True if validators.url(url) else False
-
     def init_thread(self):
         """
         this is where you put your thread ready to receive data from the client like in assign #1

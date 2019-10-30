@@ -6,8 +6,15 @@ import os.path
 import os
 import glob
 import pickle
+import re
 
 BASE_PATH = os.path.abspath(os.path.dirname(__file__))
+
+"""
+This function taken from https://stackoverflow.com/questions/295135/turn-a-string-into-a-valid-filename
+"""
+def sanitize(url):
+    return "".join(x for x in url if x.isalnum())
 
 class ProxyManager:
     """
@@ -148,10 +155,11 @@ class ProxyManager:
         :param response: response object to save
         """
         path = os.path.abspath(os.path.dirname(__file__))
-        with open("{}/cache/resources/{}.pickle".format(BASE_PATH, url), "wb") as file_handle:
+        url_hash = sanitize(url)
+        with open("{}/cache/resources/{}.pickle".format(BASE_PATH, url_hash), "wb") as file_handle:
             pickle.dump(response, file_handle, protocol=pickle.HIGHEST_PROTOCOL)
         if not self.is_cached(url):
-            self.cache.append(url)
+            self.cached.append(url)
     def is_cached(self, url):
         """
         Optional method but really helpful. 
@@ -162,8 +170,14 @@ class ProxyManager:
         request: the request data from the client 
         :return: if the url is cached return true. Otherwise, false
         """
-        for i in self.cached:
-            if i == url:
+        # for i in self.cached:
+        #     if i == url:
+        #         return True
+        # return False
+        files = glob.glob('{}/cache/resources/*.pickle'.format(BASE_PATH))
+        match = '{}/cache/resources/{}.pickle'.format(BASE_PATH, sanitize(url))
+        for f in files:
+            if f == match:
                 return True
         return False
         # return os.path.exists("{}/cache/resources/{}.pickle".format(BASE_PATH,url))
@@ -176,7 +190,8 @@ class ProxyManager:
         request: the request data from the client 
         :return: The resource requested
         """
-        with open("{}/cache/resources/{}.pickle".format(BASE_PATH, url), "rb") as file_handle:
+
+        with open("{}/cache/resources/{}.pickle".format(BASE_PATH, sanitize(url)), "rb") as file_handle:
             s = pickle.load(file_handle)
         return s
 
@@ -189,6 +204,22 @@ class ProxyManager:
         for f in files:
             os.remove(f)
         self.cached = []
+    
+    def get_cache(self):
+        """
+        
+        :return: VOID
+        """
+        files = glob.glob('{}/cache/resources/*.pickle'.format(BASE_PATH))
+        cached_file_names = []
+        for f in files:
+            s = f.split('/')[-1]
+            try:
+                i = s.index(".pickle")
+                cached_file_names.append(s[0:i])
+            except ValueError:
+                pass
+        return cached_file_names
     
     def get_history(self):
         """
@@ -224,3 +255,7 @@ class ProxyManager:
         """
         self.clear_cache()
         self.clear_history()
+
+if __name__ == "__main__":
+    pm = ProxyManager()
+    pm.update_cache('s', 'whatever')

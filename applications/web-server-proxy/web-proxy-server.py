@@ -42,7 +42,7 @@ def proxy_settings():
     managers = pm.managers_credentials
     blocked_sites = pm.sites_blocked
     history = pm.get_history()
-    cache = pm.cached
+    cache = pm.get_cache()
     private_mode_users = pm.private_mode_auth
     
     return render_template('proxy-settings.html', admins=admins,managers=managers,blocked_sites=blocked_sites,history=history, cache=cache, private_mode_users=private_mode_users)
@@ -61,15 +61,7 @@ def get_user_input():
     data = {'url': url, 'is_private_mode': is_private_mode, 'client_ip':request.remote_addr, 'http_version': request.environ.get('SERVER_PROTOCOL')}
     client.request_to_proxy(data)
     res = client.response_from_proxy()
-    # reseponse_from_proxy....
-    # Flask.make_response()
-    # response = Flask.HTTPResponse(client.reseponse_from_proxy())
-    # response.begin()
-    # return response.get_content()
-    # response_object = Flask.make_response(res)
-    # print(response_object)
-    # auth
-    # res = Response(res)
+  
     html_body = res.split("\r\n")[-1]
     return html_body
 
