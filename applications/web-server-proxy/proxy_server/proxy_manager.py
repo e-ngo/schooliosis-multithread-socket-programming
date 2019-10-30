@@ -67,6 +67,24 @@ class ProxyManager:
                 pass
         return False
 
+    def add_private_mode_user(self, email, passw):
+        """
+        Adds new user to private mode authed users
+        """
+        self.private_mode_auth.append({'email':email, 'passw':passw})
+    
+    def is_private_mode_user(self, email, passw):
+        """
+        Checks if email, passw matches that of privatemodeauth user
+        """
+        pm_list = self.private_mode_auth
+        for pm in pm_list:
+            try:
+                return pm[email] == passw
+            except KeyError:
+                pass
+        return False
+
     def add_site_blocked(self, url):
         """
         Add the blocked site for employees to the self.sites_blocked list
@@ -104,7 +122,7 @@ class ProxyManager:
         :param password: 
         :return: 
         """
-        self.managers_credentials.append({'email':email, 'passw':passw})
+        self.managers_credentials.append({'email':email, 'passw':password})
 
     def is_manager(self, email, password):
         """
@@ -118,7 +136,7 @@ class ProxyManager:
         manager_list = self.managers_credentials
         for manager in manager_list:
             try:
-                return manager[email] == passw
+                return manager[email] == password
             except KeyError:
                 pass
         return False
@@ -206,18 +224,3 @@ class ProxyManager:
         """
         self.clear_cache()
         self.clear_history()
-
-
-
-
-
-
-
-
-
-
-
-if __name__=="__main__":
-    path = os.path.abspath(os.path.dirname(__file__))
-    # print(path)
-    # print(path+'/pickle')

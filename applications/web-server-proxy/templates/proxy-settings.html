@@ -10,31 +10,31 @@
         <!-- Optional theme -->
         <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" >
         <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
-        <script src="proxyjs.js"></script>
+        <!-- <script src="proxyjs.js"></script> -->
     </head>
     <body >
         <div class="container">
             <div class="row">
                 <div class="col-md-6 col-md-offset-3">
                     <h2>Proxy Settings</h2> This page can only be visited by proxy admins. </p>
-                    <form role="form" method="post" id="reused_form" >
+                    <form role="form" method="post" action="/proxy-settings" >
                         <div>
-                         <button type="submit" class="btn btn-lg btn-success pull-right" id="btnContactUs">Add new admin! &rarr;</button>
+                         <button type="submit" class="btn btn-lg btn-success pull-right" name="addnewadmin" value="True">Add new admin! &rarr;</button>
                          </div>
                          
                          <div class="form-group">
-                            <label for="name"> List of admins:</label>
+                            <label for="name"> List of admins: Add new admin by passing in one username:password pair. Note that it is : delimited</label>
                             <textarea class="form-control" type="textarea" name="admins" id="message"  maxlength="6000" rows="7" placeholder="{{admins}}"></textarea>
                          </div>
                          <div>
-                         <button type="submit" class="btn btn-lg btn-success pull-right" id="btnContactUs">Add new blocked site! &rarr;</button>
+                         <button type="submit" class="btn btn-lg btn-success pull-right" name="addblockedsite" value="True">Add new blocked site! &rarr;</button>
                          </div>
                         <div class="form-group">
-                            <label for="name"> List of blocked sites:</label>
+                            <label for="name"> List of blocked sites: Add new site by passing in one URL only</label>
                             <textarea class="form-control" type="textarea" name="blocked_sites" id="blocked_sites" placeholder="{{blocked_sites}}" maxlength="6000" rows="7"></textarea>
                          </div>
                         <div>
-                         <button type="submit" class="btn btn-lg btn-success pull-right" id="btnContactUs">Clear cache! &rarr;</button>
+                         <button type="submit" class="btn btn-lg btn-success pull-right" name="clearcache" value="True">Clear cache! &rarr;</button>
                          </div>
 
                         <div class="form-group">
@@ -42,20 +42,20 @@
                             <textarea class="form-control" type="textarea" name="cache" id="cache" placeholder="{{cache}}" maxlength="6000" rows="7"></textarea>
                          </div>
                         <div>
-                         <button type="submit" class="btn btn-lg btn-success pull-right" id="btnContactUs">Add new User! &rarr;</button>
+                         <button type="submit" class="btn btn-lg btn-success pull-right" name="adduser" value="True">Add new User! &rarr;</button>
                          </div>
 
                          <div class="form-group">
-                            <label for="name">Users allowed to browse in private mode</label>
+                            <label for="name">Users allowed to browse in private mode: Add new user by passing in one username:password</label>
                             <textarea class="form-control" type="textarea" name="private_mode_users" id="private_mode_users" placeholder="{{private_mode_users}}" maxlength="6000" rows="7"></textarea>
                          </div>
                         <div>
-                         <button type="submit" class="btn btn-lg btn-success pull-right" id="btnContactUs">Add new manager! &rarr;</button>
+                         <button type="submit" class="btn btn-lg btn-success pull-right" name="addmanager" value="True">Add new manager! &rarr;</button>
                          </div>
 
                          <div class="form-group">
                             <label for="name">List of Managers</label>
-                            <textarea class="form-control" type="textarea" name="admins" id="message" placeholder="{{managers}}" maxlength="6000" rows="7"></textarea>
+                            <textarea class="form-control" type="textarea" name="managers" id="message" placeholder="{{managers}}" maxlength="6000" rows="7"></textarea>
                          </div>
 
 

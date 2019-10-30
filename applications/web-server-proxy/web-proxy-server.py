@@ -10,9 +10,34 @@ app = Flask(__name__)
 def home():
    return render_template('home.html')
 
-@app.route('/proxy-settings')
+@app.route('/proxy-settings', methods=['GET', 'POST'])
 def proxy_settings():
+    print("Something...")
     pm = ProxyManager()
+
+    if request.method == 'POST':
+        if request.form.get('addnewadmin') == 'True':
+            new_manager = request.form.get('admins')
+            s = new_manager.split(':')
+            if len(s) == 2:
+                pm.add_admin(s[0], s[1])
+        if request.form.get('addblockedsite') == 'True':
+            new_blocked_site = request.form.get('blocked_sites')
+            if new_blocked_site != "":
+                pm.add_site_blocked(new_blocked_site)
+        if request.form.get('adduser') == 'True':
+            new_admin = request.form.get('private_mode_users')
+            s = new_admin.split(':')
+            if len(s) == 2:
+                pm.add_private_mode_user(s[0], s[1])
+        if request.form.get('addmanager') == 'True':
+            new_private_mode_user = request.form.get('managers')
+            s = new_private_mode_user.split(':')
+            if len(s) == 2:
+                pm.add_manager(s[0], s[1])
+        if request.form.get('clearcache') == 'True':
+            # clear cache
+            pm.clear_cache()
     admins = pm.list_of_admins()
     managers = pm.managers_credentials
     blocked_sites = pm.sites_blocked
