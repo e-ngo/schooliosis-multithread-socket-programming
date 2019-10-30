@@ -3,6 +3,9 @@
 
 
 from cache import * # point of access to cache files
+import os.path
+import os
+import glob
 
 class ProxyManager:
     """
@@ -15,14 +18,14 @@ class ProxyManager:
     def init_settings (self):
         # Credentials for admins allowed to edit the proxy seetings page
         # append data in the form {'email: email, 'passw': passw}
-        self.proxy_admins = []
-        self.sites_blocked = []
+        self.proxy_admins = [{'email':'admin@example.com', 'passw':'123'}]
+        self.sites_blocked = ['http://youtube.com', 'http://reddit.com']
         # Credentials allowed employees that can browse in private mode
         # append data in the form {'email: email, 'passw': passw}
-        self.private_mode_auth = []
+        self.private_mode_auth = [{'email':'private@example.com', 'passw':'123'}, {'email':'jose@example.com', 'passw':'123'}]
         # Credentials  of upper division employess
         # append data in the form {'email: email, 'passw': passw}
-        self.managers_credentials = []
+        self.managers_credentials = [{'email':'manager@example.com', 'passw':'123'}]
 
 
     def add_admin(self, email, passw):
@@ -36,7 +39,6 @@ class ProxyManager:
         :return: VOID
         """
         self.proxy_admins.append({'email':email, 'passw':passw})
-
 
     def list_of_admins(self):
         """
@@ -53,31 +55,40 @@ class ProxyManager:
         :param passw: 
         :return: true if is admin, otherwise, returns false
         """
-        return 0
+        admin_list = self.list_of_admins()
+        for admin in admin_list:
+            try:
+                return admin[email] == passw
+            except KeyError:
+                pass
+        return False
 
-
-    def add_site_blocked(self, request):
+    def add_site_blocked(self, url):
         """
         Add the blocked site for employees to the self.sites_blocked list
-        request: 
+        url: 
         :return: VOID
         """
-        return 0
+        self.sites_blocked.append(url)
 
     def get_blocked_site(self, request):
         """
         request: 
         :return: The list of sites blocked for employees
         """
+        return self.sites_blocked
 
-    def is_site_blocked(self, request):
+    def is_site_blocked(self, url):
         """
         1. Get all the sites blocked
-        2. Check if the url in the request is blocked
-        :param request: 
+        2. Check if the url in the url is blocked
+        :param url: 
         :return: true if the site is blocked, otherwise, false
         """
-        return 0
+        for site in self.sites_blocked:
+            if site == url:
+                return True
+        return False
 
     def add_manager(self, email, password):
         """
@@ -89,7 +100,7 @@ class ProxyManager:
         :param password: 
         :return: 
         """
-        return 0
+        self.managers_credentials.append({'email':email, 'passw':passw})
 
     def is_manager(self, email, password):
         """
@@ -100,9 +111,24 @@ class ProxyManager:
         :param password: 
         :return: True is the employee is upper management, otherwise, returns false
         """
-        return 0
+        manager_list = self.managers_credentials
+        for manager in manager_list:
+            try:
+                return manager[email] == passw
+            except KeyError:
+                pass
+        return False
 
-    def is_cached(self, request):
+    def update_cache(self, url, response):
+        """
+        Adds element into cache.
+        :param url: used as hash
+        :param response: response object to save
+        """
+        with open("./cache/resources/{}.pickle".format(url), "wb") as file_handle:
+            pickle.dump(response, file_handle, protocol=pickle.HIGHEST_PROTOCOL)
+
+    def is_cached(self, url):
         """
         Optional method but really helpful. 
         Checks if a url is already in the cache 
@@ -112,9 +138,9 @@ class ProxyManager:
         request: the request data from the client 
         :return: if the url is cached return true. Otherwise, false
         """
-        return 0
+        return os.path.exists("./cache/resources/{}.pickle".format(url))
 
-    def get_cached_resource(self, request):
+    def get_cached_resource(self, url):
         """
         1. Extract url and private mode status from the request 
         2. Go to cache folder and locate if the resources
@@ -122,21 +148,44 @@ class ProxyManager:
         request: the request data from the client 
         :return: The resource requested
         """
-        return 0
+        with open("./cache/resources/{}.pickle".format(url), "rb") as file_handle:
+            s = pickle.load(file_handle)
+        return s
 
     def clear_cache(self):
         """
         
         :return: VOID
         """
-        return 0
+        files = glob.glob('./cache/resources/*.pickle')
+        for f in files:
+            os.remove(f)
+    
+    def get_history(self):
+        """
+        Get history list from ./cache/history.pickle
+        """
+        with open("./cache/history.pickle", "rb") as file_handle:
+            s = pickle.load(file_handle)
+        return s
+    
+    def add_history(self, url):
+        """
+        Adds to history
+        :return: VOID
+        """
+        history_list = self.get_history()
+        history_list.append(url)
+        with open("./cache/history.pickle", "wb") as file_handle:
+            pickle.dump(history_list, file_handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     def clear_history(self):
         """
         
         :return: VOID
         """
-        return 0
+        with open("./cache/history.pickle", "wb") as file_handle:
+            pickle.dump([], file_handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     def clear_all(self):
         """
@@ -144,7 +193,8 @@ class ProxyManager:
         2. execute clear_history
         :return: VOID
         """
-        return 0
+        self.clear_cache()
+        self.clear_history()
 
 
 

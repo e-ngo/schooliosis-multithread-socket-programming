@@ -49,7 +49,7 @@ class Client:
     BUFFER_SIZE = 65536
     # ProxyServer constants
     SERVER_HOST = '127.0.0.1'
-    SERVER_PORT = 12002
+    SERVER_PORT = 12000
 
     def __init__(self):
         self.init_socket()

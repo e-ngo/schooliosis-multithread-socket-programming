@@ -13,7 +13,7 @@ import pickle
 import requests
 import socket
 import time
-import validators
+# import validators
 
 class ClientDisconnect(Exception):
     """Signals client disconnect
@@ -168,13 +168,13 @@ class ProxyThread:
             return False
         return True
 
-    def is_valid_url(self, http_request_string):
-        """
-        Determines whether or not given http_request_string has
-        a valid url
-        """
-        url = parse_for_field(http_request_string, "url")
-        return True if validators.url(url) else False
+    # def is_valid_url(self, http_request_string):
+    #     """
+    #     Determines whether or not given http_request_string has
+    #     a valid url
+    #     """
+    #     url = parse_for_field(http_request_string, "url")
+    #     return True if validators.url(url) else False
 
     def init_thread(self):
         """
@@ -232,9 +232,11 @@ class ProxyThread:
         req_map = params['request_map']
         response = params['response']
         http_version = req_map["http_version"]
-        content_length = len(response.content)
+        content_length = len(response.text)
 
-        self._send("HTTP/{} 200 OK\r\nDate: Tue, 22 Oct 2019 06:40:46 GMT\r\nServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.2k-fips PHP/5.4.16 mod_perl/2.0.10 Perl/v5.16.3\r\nX-Powered-By: PHP/5.4.16\r\nContent-Length: {}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n{}".format(http_version, content_length, response.content))
+        # print(response.text)
+
+        self._send("HTTP/{} 200 OK\r\nDate: Tue, 22 Oct 2019 06:40:46 GMT\r\nServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.2k-fips PHP/5.4.16 mod_perl/2.0.10 Perl/v5.16.3\r\nX-Powered-By: PHP/5.4.16\r\nContent-Length: {}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n{}".format(http_version, content_length, response.text))
 
     def respond_not_modified(self, params):
         """
@@ -252,7 +254,10 @@ class ProxyThread:
         Sends 401 response to client
         """
         # response should include Proxy-Authenticate: Basic realm="proxyserver"
-        pass
+#         HTTP/1.1 401 Unauthorized 
+# Date: Wed, 21 Oct 2015 07:28:00 GMT
+# WWW-Authenticate: Basic realm="Access to staging site"
+
     def respond_bad_request(self, params):
         """
         Sends 400 response to client
@@ -318,6 +323,35 @@ class ProxyThread:
             return True
         return False
 
+    def handle_auth(self, request_map, response_params):
+        """
+        Note that execution flows if the user is authenticating/authenticated
+        :param request_map: used to check request
+        :param response_params: used in response
+        """
+        if not self.permissions:
+            # ask for permissions
+            if request_map["method"] != "POST":
+                # if not an attempt to login and not logged in, ask to login
+                self.handle_client_response(407, response_params)
+                return ;
+
+            body = request_map["params"]
+            post_params = params_to_map(body)
+            if "user_name" not in post_params or "password" not in post_params:
+                # 403 error: Something is wrong with input params...
+                self.handle_client_response(403, response_params)
+                return ;
+
+            username = post_params["user_name"]
+            password = post_params["password"]
+            self.permission = self.login(username, password, mask=True)
+
+            if not self.permission:
+                # insufficient permissions
+                self.handle_client_response(401, response_params)
+                return ;
+
     def process_client_request(self, http_request_string):
         """
         Main algorithm. Note that those are high level steps, and most of them may
@@ -358,24 +392,7 @@ class ProxyThread:
 
             if int(query_params["is_private_mode"]) == 1:
                 # make sure authed
-                if not self.permissions:
-                    # ask for permissions
-                    if request_map["method"] != "POST":
-                        # if not an attempt to login and not logged in, ask to login
-                        self.handle_client_response(407, response_params)
-                        return ;
-
-                    body = request_map["params"]
-                    post_params = params_to_map(body)
-
-                    username = post_params["user_name"]
-                    password = post_params["password"]
-                    self.permission = self.login(username, password, mask=True)
-
-                    if not self.permission:
-                        # insufficient permissions
-                        self.handle_client_response(401, response_params)
-                        return ;
+                self.handle_auth(request_map, response_params)
                 # user has sufficient permissions at this point.            
                 response = self.get_request_to_server(url, request_map)
             else:
@@ -383,12 +400,21 @@ class ProxyThread:
                 # if is_cached(url):
                 # make head request
                 # else:
+                if needs_auth(url):
+                    self.handle_auth(request_map, response_params)
+                # in handle_cache checks if proxy manager has url. if it does, it does a head request,
+                # checks if_modified_since date, if it is ok, it sends 300 instead. else execution flows
+                # back here.
+                self.handle_cache(request_map, response_params)
+
                 response = self.get_request_to_server(url, request_map)
 
             if 200<=response.status_code< 300 or response.status_code == 304:
+                if int(query_params["is_private_mode"]) != 1:
+                    self.
                 # check exists
                 response_params['response'] = response
-
+                
                 self.handle_client_response(200, response_params)
             else:
                 self.handle_client_response(404, response_params)
@@ -428,25 +454,41 @@ class ProxyThread:
         """
         HEAD request does not return the HTML of the site
         :param url:
-        :param param: parameters to be appended to the url as a mapping.
+        :param param: additions to session header
         :return: the headers of the response from the original server
         """
-        res = requests.head(url, params=param)
+        # with requests.Session() as session:
+        #     response = session.head(url)
+    
+        headers = {}
+        # add custom headers
+        if "Connection" in param:
+            headers["Connection"] = param["Connection"]
+        if "Keep-Alive" in param:
+            headers["Keep-Alive"] = param["Keep-Alive"]
+        response = requests.head(url, headers = headers)
         print("HEAD to", url)
         print(res)
         return res
         
 
-    def get_request_to_server(self, url, param=None):
+    def get_request_to_server(self, url, param):
         """
         GET request
         :param url: 
-        # :param param: parameters to be appended to the url
+        :param param: additions to session header
         :return: the complete response including the body of the response
         """
-        with requests.Session() as session:
-            response = session.get(url)
-        # res = requests.get(url)#, params=param)
+        # with requests.Session() as session:
+            # session.headers.update({})
+            # response = session.get(url)
+        headers = {}
+        # add custom headers
+        if "Connection" in param:
+            headers["Connection"] = param["Connection"]
+        if "Keep-Alive" in param:
+            headers["Keep-Alive"] = param["Keep-Alive"]
+        response = requests.get(url, headers = headers)
         print("GET to", url)
         print(response)
         return response
