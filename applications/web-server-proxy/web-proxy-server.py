@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, Response
 import requests
 from client.client import Client
+from proxy_server.proxy_manager import ProxyManager
 
 app = Flask(__name__)
 
@@ -11,7 +12,15 @@ def home():
 
 @app.route('/proxy-settings')
 def proxy_settings():
-    return render_template('proxy-settings.html')
+    pm = ProxyManager()
+    admins = pm.list_of_admins()
+    managers = pm.managers_credentials
+    blocked_sites = pm.sites_blocked
+    history = pm.get_history()
+    cache = pm.cached
+    private_mode_users = pm.private_mode_auth
+    
+    return render_template('proxy-settings.html', admins=admins,managers=managers,blocked_sites=blocked_sites,history=history, cache=cache, private_mode_users=private_mode_users)
 
 @app.route('/home.html', methods=['POST'])
 def get_user_input():

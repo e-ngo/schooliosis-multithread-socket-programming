@@ -2,10 +2,12 @@
 # done in the proxy-settings page of the project
 
 
-from cache import * # point of access to cache files
 import os.path
 import os
 import glob
+import pickle
+
+BASE_PATH = os.path.abspath(os.path.dirname(__file__))
 
 class ProxyManager:
     """
@@ -26,6 +28,8 @@ class ProxyManager:
         # Credentials  of upper division employess
         # append data in the form {'email: email, 'passw': passw}
         self.managers_credentials = [{'email':'manager@example.com', 'passw':'123'}]
+        self.cached = []
+        self.clear_history()
 
 
     def add_admin(self, email, passw):
@@ -125,9 +129,11 @@ class ProxyManager:
         :param url: used as hash
         :param response: response object to save
         """
-        with open("./cache/resources/{}.pickle".format(url), "wb") as file_handle:
+        path = os.path.abspath(os.path.dirname(__file__))
+        with open("{}/cache/resources/{}.pickle".format(BASE_PATH, url), "wb") as file_handle:
             pickle.dump(response, file_handle, protocol=pickle.HIGHEST_PROTOCOL)
-
+        if not self.is_cached(url):
+            self.cache.append(url)
     def is_cached(self, url):
         """
         Optional method but really helpful. 
@@ -138,7 +144,11 @@ class ProxyManager:
         request: the request data from the client 
         :return: if the url is cached return true. Otherwise, false
         """
-        return os.path.exists("./cache/resources/{}.pickle".format(url))
+        for i in self.cached:
+            if i == url:
+                return True
+        return False
+        # return os.path.exists("{}/cache/resources/{}.pickle".format(BASE_PATH,url))
 
     def get_cached_resource(self, url):
         """
@@ -148,7 +158,7 @@ class ProxyManager:
         request: the request data from the client 
         :return: The resource requested
         """
-        with open("./cache/resources/{}.pickle".format(url), "rb") as file_handle:
+        with open("{}/cache/resources/{}.pickle".format(BASE_PATH, url), "rb") as file_handle:
             s = pickle.load(file_handle)
         return s
 
@@ -157,15 +167,16 @@ class ProxyManager:
         
         :return: VOID
         """
-        files = glob.glob('./cache/resources/*.pickle')
+        files = glob.glob('{}/cache/resources/*.pickle'.format(BASE_PATH))
         for f in files:
             os.remove(f)
+        self.cached = []
     
     def get_history(self):
         """
         Get history list from ./cache/history.pickle
         """
-        with open("./cache/history.pickle", "rb") as file_handle:
+        with open("{}/cache/history.pickle".format(BASE_PATH), "rb") as file_handle:
             s = pickle.load(file_handle)
         return s
     
@@ -176,7 +187,7 @@ class ProxyManager:
         """
         history_list = self.get_history()
         history_list.append(url)
-        with open("./cache/history.pickle", "wb") as file_handle:
+        with open("{}/cache/history.pickle".format(BASE_PATH), "wb") as file_handle:
             pickle.dump(history_list, file_handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     def clear_history(self):
@@ -184,7 +195,7 @@ class ProxyManager:
         
         :return: VOID
         """
-        with open("./cache/history.pickle", "wb") as file_handle:
+        with open("{}/cache/history.pickle".format(BASE_PATH), "wb") as file_handle:
             pickle.dump([], file_handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     def clear_all(self):
@@ -206,3 +217,7 @@ class ProxyManager:
 
 
 
+if __name__=="__main__":
+    path = os.path.abspath(os.path.dirname(__file__))
+    # print(path)
+    # print(path+'/pickle')

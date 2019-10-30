@@ -21,16 +21,17 @@
                         <div>
                          <button type="submit" class="btn btn-lg btn-success pull-right" id="btnContactUs">Add new admin! &rarr;</button>
                          </div>
+                         
                          <div class="form-group">
                             <label for="name"> List of admins:</label>
-                            <textarea class="form-control" type="textarea" name="admins" id="message" placeholder="Jose Ortiz" maxlength="6000" rows="7"></textarea>
+                            <textarea class="form-control" type="textarea" name="admins" id="message"  maxlength="6000" rows="7" placeholder="{{admins}}"></textarea>
                          </div>
                          <div>
                          <button type="submit" class="btn btn-lg btn-success pull-right" id="btnContactUs">Add new blocked site! &rarr;</button>
                          </div>
                         <div class="form-group">
                             <label for="name"> List of blocked sites:</label>
-                            <textarea class="form-control" type="textarea" name="admins" id="message" placeholder="www.facebook.com" maxlength="6000" rows="7"></textarea>
+                            <textarea class="form-control" type="textarea" name="blocked_sites" id="blocked_sites" placeholder="{{blocked_sites}}" maxlength="6000" rows="7"></textarea>
                          </div>
                         <div>
                          <button type="submit" class="btn btn-lg btn-success pull-right" id="btnContactUs">Clear cache! &rarr;</button>
@@ -38,7 +39,7 @@
 
                         <div class="form-group">
                             <label for="name"> List of domain resources in cache</label>
-                            <textarea class="form-control" type="textarea" name="admins" id="message" placeholder="linkedin" maxlength="6000" rows="7"></textarea>
+                            <textarea class="form-control" type="textarea" name="cache" id="cache" placeholder="{{cache}}" maxlength="6000" rows="7"></textarea>
                          </div>
                         <div>
                          <button type="submit" class="btn btn-lg btn-success pull-right" id="btnContactUs">Add new User! &rarr;</button>
@@ -46,15 +47,15 @@
 
                          <div class="form-group">
                             <label for="name">Users allowed to browse in private mode</label>
-                            <textarea class="form-control" type="textarea" name="admins" id="message" placeholder="jortizco@sfsu.edu" maxlength="6000" rows="7"></textarea>
+                            <textarea class="form-control" type="textarea" name="private_mode_users" id="private_mode_users" placeholder="{{private_mode_users}}" maxlength="6000" rows="7"></textarea>
                          </div>
                         <div>
-                         <button type="submit" class="btn btn-lg btn-success pull-right" id="btnContactUs">Add new site! &rarr;</button>
+                         <button type="submit" class="btn btn-lg btn-success pull-right" id="btnContactUs">Add new manager! &rarr;</button>
                          </div>
 
                          <div class="form-group">
-                            <label for="name">Sites for managers only</label>
-                            <textarea class="form-control" type="textarea" name="admins" id="message" placeholder="http://companyY.org/client_data/" maxlength="6000" rows="7"></textarea>
+                            <label for="name">List of Managers</label>
+                            <textarea class="form-control" type="textarea" name="admins" id="message" placeholder="{{managers}}" maxlength="6000" rows="7"></textarea>
                          </div>
 
 

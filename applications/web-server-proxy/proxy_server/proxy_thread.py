@@ -411,7 +411,8 @@ class ProxyThread:
 
             if 200<=response.status_code< 300 or response.status_code == 304:
                 if int(query_params["is_private_mode"]) != 1:
-                    self.
+                    # self.
+                    pass
                 # check exists
                 response_params['response'] = response
                 
