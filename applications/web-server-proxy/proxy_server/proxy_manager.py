@@ -28,7 +28,7 @@ class ProxyManager:
         # Credentials for admins allowed to edit the proxy seetings page
         # append data in the form {'email: email, 'passw': passw}
         self.proxy_admins = [{'email':'admin@example.com', 'passw':'123'}]
-        self.sites_blocked = ['http://youtube.com', 'http://reddit.com']
+        self.sites_blocked = ['http://youtube.com', 'http://reddit.com', 'http://google.com']
         # Credentials allowed employees that can browse in private mode
         # append data in the form {'email: email, 'passw': passw}
         self.private_mode_auth = [{'email':'private@example.com', 'passw':'123'}, {'email':'jose@example.com', 'passw':'123'}]
@@ -67,15 +67,15 @@ class ProxyManager:
         :return: true if is admin, otherwise, returns false
         """
         admin_list = self.list_of_admins()
+        print("admins")
         for admin in admin_list:
-            try:
-                return admin[email] == passw
-            except KeyError:
-                pass
+            print(admin)
+            if admin['email'] == email and admin['passw'] == passw:
+                return True
         return False
 
     def add_private_mode_user(self, email, passw):
-        """
+        """ 
         Adds new user to private mode authed users
         """
         self.private_mode_auth.append({'email':email, 'passw':passw})
@@ -85,11 +85,11 @@ class ProxyManager:
         Checks if email, passw matches that of privatemodeauth user
         """
         pm_list = self.private_mode_auth
+        print("Private")
         for pm in pm_list:
-            try:
-                return pm[email] == passw
-            except KeyError:
-                pass
+            print(pm)
+            if pm['email'] == email and pm['passw'] == passw:
+                return True
         return False
 
     def add_site_blocked(self, url):
@@ -131,7 +131,7 @@ class ProxyManager:
         """
         self.managers_credentials.append({'email':email, 'passw':password})
 
-    def is_manager(self, email, password):
+    def is_manager(self, email, passw):
         """
         Checks if the employee is in the list of upper management 
         employees allowed to browse some special company pages not
@@ -141,11 +141,11 @@ class ProxyManager:
         :return: True is the employee is upper management, otherwise, returns false
         """
         manager_list = self.managers_credentials
+        print("Managers")
         for manager in manager_list:
-            try:
-                return manager[email] == password
-            except KeyError:
-                pass
+            print(manager)
+            if manager['email'] == email and manager['passw'] == passw:
+                return True
         return False
 
     def update_cache(self, url, response):

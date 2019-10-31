@@ -21,8 +21,8 @@ def network_exception_handler(func):
             print(f"An HTTPError occurred: {sock_error}")
         except ServerDisconnect:
             print("Server has disconnected")
-        # except Exception as e:
-            # print(f"Something went wrong: {e}")
+        except Exception as e:
+            print(f"Something went wrong: {e}")
     return wrap_func
 
 
@@ -49,7 +49,7 @@ class Client:
     BUFFER_SIZE = 65536
     # ProxyServer constants
     SERVER_HOST = '127.0.0.1'
-    SERVER_PORT = 12000
+    SERVER_PORT = 12001
 
     def __init__(self):
         self.init_socket()
@@ -57,7 +57,6 @@ class Client:
     def init_socket(self):
         try:
             self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            print("Socket successfully created")
         except socket.error as err:
             print("socket creation failed with error", (err))
 
@@ -73,8 +72,12 @@ class Client:
         :param port: 
         :return: VOID
         """
-        # Connects to the server using its host IP and port
-        self.client_socket.connect((host_ip, port))
+        try:
+            # Connects to the server using its host IP and port
+            self.client_socket.connect((host_ip, port))
+        except OSError:
+            pass
+            # socket already connected
 
     @network_exception_handler
     def _send(self, data):
@@ -133,16 +136,14 @@ class Client:
         :param data: url and private mode 
         :return: VOID
         """
-        """
-        Example from SO: https://stackoverflow.com/questions/34192093/python-socket-get
-        """
         # path, host = self.parse_url(data['url'])
+        # self._connect_to_server(Client.SERVER_HOST, Client.SERVER_PORT)
         original_url = data['url'] + f"?is_private_mode={data['is_private_mode']}"
         
         body = ""
         try:
             if data['user_name']:
-                body += f"user_name=${data['user_name']}"
+                body += f"user_name={data['user_name']}"
         except KeyError:
             # user_name not provided...
             pass
@@ -150,7 +151,7 @@ class Client:
             if data['password']:
                 if body:
                     body += "&"
-                body += f"password=${data['password']}"
+                body += f"password={data['password']}"
 
         except KeyError:
             pass
@@ -183,7 +184,7 @@ class Client:
         # receive data
         response = self._receive()
         # handle response(extract headers, return pretty params?...)
-        print("Resonse form proxy", response)
+        # print("Resonse form proxy", response)
         # non-persistent: closer socket afterwards...
         # self._disconnect()
         # render HTML
@@ -192,13 +193,15 @@ class Client:
 if __name__=="__main__":
     # test script
     client = Client()
-    client.request_to_proxy({'url': 'https://google.com/', 'is_private_mode': 0, 'client_ip': '127.0.0.1', 'http_version': '1.1'})
-    res = client.response_from_proxy()
-    print(res)
-    import time
-    time.sleep(3)
-    client.request_to_proxy({'url': 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Authentication', 'is_private_mode': 1, 'client_ip': '127.0.0.1', 'http_version': '1.1'})
-    res = client.response_from_proxy()
-    print(res)
-    time.sleep(6)
-    client._disconnect()
+    # client.request_to_proxy({'url': 'https://google.com/', 'is_private_mode': 0, 'client_ip': '127.0.0.1', 'http_version': 'HTTP/1.1'})
+    # res = client.response_from_proxy()
+    # # print(res)
+    # import time
+    # time.sleep(3)
+    # client.request_to_proxy({'url': 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Authentication', 'is_private_mode': 1, 'client_ip': '127.0.0.1', 'http_version': 'HTTP/1.1'})
+    # res = client.response_from_proxy()
+    # # print(res)
+    # time.sleep(6)
+    # client._disconnect()
+    client._connect_to_server('127.0.0.1', 12000)
+    client._connect_to_server('127.0.0.1', 12000)

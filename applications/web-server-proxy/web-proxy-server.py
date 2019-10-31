@@ -5,6 +5,11 @@ from proxy_server.proxy_manager import ProxyManager
 
 app = Flask(__name__)
 
+# singleton
+# try:
+#     client
+# except NameError:
+#     client = Client()
 
 @app.route('/')
 def home():
@@ -49,19 +54,27 @@ def proxy_settings():
 
 @app.route('/home.html', methods=['POST'])
 def get_user_input():
-    url = request.form.get('url')
+    client = Client()
+    email = request.form.get('email') or ""
+    password = request.form.get('password') or ""
+    url = request.form.get('url') or ""
     is_private_mode = 0
     if request.form.get('private'):
         is_private_mode = 1
     if "proxy-settings" in url:
         return proxy_settings()
+    
+    if is_private_mode == 1:
+        data = {'url': url, 'is_private_mode': is_private_mode, 'client_ip':request.remote_addr, 'http_version': request.environ.get('SERVER_PROTOCOL'), 'user_name': email, 'password': password}
+    else:
+        # makes new client. request_to_proxy....
+        data = {'url': url, 'is_private_mode': is_private_mode, 'client_ip':request.remote_addr, 'http_version': request.environ.get('SERVER_PROTOCOL')}
 
-    # makes new client. request_to_proxy....
-    client = Client()
-    data = {'url': url, 'is_private_mode': is_private_mode, 'client_ip':request.remote_addr, 'http_version': request.environ.get('SERVER_PROTOCOL')}
     client.request_to_proxy(data)
     res = client.response_from_proxy()
-  
+
+    print(res)
+
     html_body = res.split("\r\n")[-1]
     return html_body
 

@@ -14,6 +14,14 @@
         <form class="example" method="post" action="{{ url_for('get_user_input') }}"
          style="margin:auto;max-width:600px">
             <input type="text" placeholder="http://yoursite.com" name="url">
+            <!-- <form class="example" method="post" action="/home.html" style="margin:auto;max-width:600px"> -->
+            <br/>
+            <br/>
+            <br/>
+            <div>Credentials are required if you are using private_mode or are accessing blocked resources</div>
+            <input type="text" placeholder="Email" name="email"><br/>
+            <input type="text" placeholder="Password" name="password"><br/>
+                <!-- <button value="submit" type="submit">Submit</button></form> -->
             <button value="submit" type="submit"><i class="fa fa-search">Go</i>
             </button>
             <br />

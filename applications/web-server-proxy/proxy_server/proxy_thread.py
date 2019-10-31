@@ -184,6 +184,7 @@ class ProxyThread:
             while True:
                 # start timer
                 tick = time.time()
+                print(client_req)
                 self.process_client_request(client_req)
                 # increment number of request/responses
                 num_of_requests += 1
@@ -225,56 +226,136 @@ class ProxyThread:
         response = params['response']
         http_version = req_map["http_version"]
         content_length = len(response.text)
-
         # print(response.text)
 
-        self._send("HTTP/{} 200 OK\r\nDate: Tue, 22 Oct 2019 06:40:46 GMT\r\nServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.2k-fips PHP/5.4.16 mod_perl/2.0.10 Perl/v5.16.3\r\nX-Powered-By: PHP/5.4.16\r\nContent-Length: {}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n{}".format(http_version, content_length, response.text))
+        response_header = "HTTP/{} 200 OK\r\nServer: Ricware\r\nX-Powered-By: CODE/1.0.0\r\n".format(http_version)
+        content_end = "Content-Length: {}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n{}".format(content_length, response.text)
+
+        if http_version == '1.1':
+            connection = req_map['Connection']
+            response_header += "Connection: {}\r\nKeep-Alive: timeout={}, max={}\r\n".format(connection,self.KEEP_ALIVE_TIME, self.KEEP_ALIVE_REQUESTS)
+
+        if "Date" in response.headers:
+            response_header += "Date: {}\r\n".format(response.headers["Date"])
+
+        self._send(response_header + content_end)
 
     def respond_not_modified(self, params):
         """
         Sends 304 response to client
         """
-        # req_map = params['request_map']
-        # response = params['response']
-        # http_version = req_map["http_version"]
-        # content_length = len(response.content)
+        req_map = params['request_map']
+        response = params['response']
+        http_version = req_map["http_version"]
+        content_length = len(response.text)
+        # print(response.text)
 
-        # self._send("HTTP/{} 200 OK\r\nDate: Tue, 22 Oct 2019 06:40:46 GMT\r\nServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.2k-fips PHP/5.4.16 mod_perl/2.0.10 Perl/v5.16.3\r\nX-Powered-By: PHP/5.4.16\r\nContent-Length: {}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n{}".format(http_version, content_length, response.content))
+        response_header = "HTTP/{} 304 Not Modified\r\nServer: Ricware\r\nX-Powered-By: CODE/1.0.0\r\n".format(http_version)
+        content_end = "Content-Length: {}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n{}".format(content_length, response.text)
+
+        if http_version == '1.1':
+            connection = req_map['Connection']
+            response_header += "Connection: {}\r\nKeep-Alive: timeout={}, max={}\r\n".format(connection,self.KEEP_ALIVE_TIME, self.KEEP_ALIVE_REQUESTS)
+
+        if "Date" in response.headers:
+            response_header += "Date: {}\r\n".format(response.headers["Date"])
+
+        self._send(response_header + content_end)
 
     def respond_unauthorized(self, params):
         """
         Sends 401 response to client
         """
-        # response should include Proxy-Authenticate: Basic realm="proxyserver"
-#         HTTP/1.1 401 Unauthorized 
-# Date: Wed, 21 Oct 2015 07:28:00 GMT
-# WWW-Authenticate: Basic realm="Access to staging site"
+        req_map = params['request_map']
+        http_version = req_map["http_version"]
+        # content_end = ""
+        content = "<!DOCTYPE HTML><html><head><title>401</title></head><body><h1>401 Unauthorized:</h1> resource is blocked or not authorized for the current user.</body></html>"
+
+        response_header = 'HTTP/{} 401 Unauthorized\r\nServer: Ricware\r\nX-Powered-By: CODE/1.0.0\r\nProxy-Authenticate: Basic realm="proxyserver"\r\n'.format(http_version)
+        content_end = "Content-Length: {}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n{}".format(len(content), content)
+
+        if http_version == '1.1':
+            connection = req_map['Connection']
+            response_header += "Connection: {}\r\nKeep-Alive: timeout={}, max={}\r\n".format(connection,self.KEEP_ALIVE_TIME, self.KEEP_ALIVE_REQUESTS)
+
+        self._send(response_header + content_end)
 
     def respond_bad_request(self, params):
         """
-        Sends 400 response to client
+        Sends 400 response to client Bad Request 
         """
-        pass
+        req_map = params['request_map']
+        http_version = req_map["http_version"]
+        # content_end = ""
+        content = "<!DOCTYPE HTML><html><head><title>401</title></head><body><h1>400 Bad Request:</h1> the request is not understood by the original server or the proxy server</body></html>"
+
+        response_header = 'HTTP/{} 400 Bad Request\r\nServer: Ricware\r\nX-Powered-By: CODE/1.0.0\r\n'.format(http_version)
+        content_end = "Content-Length: {}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n{}".format(len(content), content)
+
+        if http_version == '1.1':
+            connection = req_map['Connection']
+            response_header += "Connection: {}\r\nKeep-Alive: timeout={}, max={}\r\n".format(connection,self.KEEP_ALIVE_TIME, self.KEEP_ALIVE_REQUESTS)
+
+        self._send(response_header + content_end)
     def respond_not_found(self, params):
         """
-        Sends 404 response to client
+        Sends 404 response to client Not Found
         """
-        pass
+        req_map = params['request_map']
+        http_version = req_map["http_version"]
+        content = "<!DOCTYPE HTML><html><head><title>401</title></head><body><h1>404 Not Found:</h1> the original server has not found anything matching the Request URI provided by the proxy server.</body></html>"
+        # content_end = ""
+
+        response_header = 'HTTP/{} 404 Not Found\r\nServer: Ricware\r\nX-Powered-By: CODE/1.0.0\r\n'.format(http_version)
+        content_end = "Content-Length: {}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n{}".format(len(content), content)
+
+        if http_version == '1.1':
+            connection = req_map['Connection']
+            response_header += "Connection: {}\r\nKeep-Alive: timeout={}, max={}\r\n".format(connection,self.KEEP_ALIVE_TIME, self.KEEP_ALIVE_REQUESTS)
+
+        self._send(response_header + content_end)
+        
     def respond_need_auth(self, params):
         """
         Sends 407 response to client
         """
-        pass
+        req_map = params['request_map']
+        http_version = req_map["http_version"]
+        # content_end = ""
+        content = '<!DOCTYPE HTML><html><head><title>401</title></head><body><h1>407 Proxy Authentication Required:</h1> the proxy needs authorization based on client credentials in order to continue with the request.</body></head>'
+
+        response_header = 'HTTP/{} 407 Proxy Authentication Required\r\nServer: Ricware\r\nX-Powered-By: CODE/1.0.0\r\nProxy-Authenticate: Basic realm="proxyserver"\r\n'.format(http_version)
+        content_end = "Content-Length: {}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n{}".format(len(content), content)
+
+        if http_version == '1.1':
+            connection = req_map['Connection']
+            response_header += "Connection: {}\r\nKeep-Alive: timeout={}, max={}\r\n".format(connection,self.KEEP_ALIVE_TIME, self.KEEP_ALIVE_REQUESTS)
+
+        self._send(response_header + content_end)
+        
     def respond_forbidden(self, params):
         """
         Sends 403 response to client
         """
-        pass
+        req_map = params['request_map']
+        http_version = req_map["http_version"]
+        # content_end = ""
+        content = "<!DOCTYPE HTML><html><head><title>401</title></head><body><h1>403 Forbidden:</h1> the server or the proxy server understood the request but the current user is forbidden to see the content of the resource requested. Authorization won’t work either in this case.</body></html>"
+
+        response_header = 'HTTP/{} 403 Forbidden\r\nServer: Ricware\r\nX-Powered-By: CODE/1.0.0\r\n'.format(http_version)
+        content_end = "Content-Length: {}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n{}".format(len(content), content)
+
+        if http_version == '1.1':
+            connection = req_map['Connection']
+            response_header += "Connection: {}\r\nKeep-Alive: timeout={}, max={}\r\n".format(connection,self.KEEP_ALIVE_TIME, self.KEEP_ALIVE_REQUESTS)
+
+        self._send(response_header + content_end)
 
     def handle_client_response(self, code, params):
         """
         Handles which response to send to users given code.
         """
+        print("Sending: {} response".format(code))
         if code == 200:
             self.respond_ok(params)
         elif code == 304:
@@ -292,48 +373,49 @@ class ProxyThread:
         else:
             raise Exception("Code not understood")
     
-    def check_permissions(self, resource):
+    def check_permissions(self):
         """
         Because after login, user role is known, check proxy manager to see if userrole
         is allowed access to resource.
         :return: Bool if user is able to access resource.
         """
-        if resource != "god":
-            return True
-        return False
+        return self.role == "super"
 
     def login(self, username, password, mask=False):
         """
         Gets userrole from proxy manager, returns True if user is authorized
         """
-        if mask:
-            self._mask_ip_address()
-        # check proxymanager if user/pw is in db.
-        if username == "Bob" and password == "123":
-            # self.proxy_manager
-            self.role = "CEO"
+        print(username, password)
+        # if mask:
+        #     self._mask_ip_address()
+        # check proxymanager if user/pw is in proxymanager.
+        if self.proxy_manager.is_admin(username, password) or self.proxy_manager.is_manager(username, password):
+            self.role = "super"
+            return True
+        if self.proxy_manager.is_private_mode_user(username, password):
+            self.role = "user"
             return True
         return False
 
-    def handle_auth(self, request_map, response_params):
+    def handle_auth(self, request_map, response_params,blocked_sites=False):
         """
         Note that execution flows if the user is authenticating/authenticated
         :param request_map: used to check request
         :param response_params: used in response
         """
-        if not self.permissions:
+        if not self.permission:
             # ask for permissions
             if request_map["method"] != "POST":
                 # if not an attempt to login and not logged in, ask to login
                 self.handle_client_response(407, response_params)
-                return ;
+                return False
 
-            body = request_map["params"]
+            body = request_map["body"]
             post_params = params_to_map(body)
             if "user_name" not in post_params or "password" not in post_params:
                 # 403 error: Something is wrong with input params...
                 self.handle_client_response(403, response_params)
-                return ;
+                return False
 
             username = post_params["user_name"]
             password = post_params["password"]
@@ -342,7 +424,33 @@ class ProxyThread:
             if not self.permission:
                 # insufficient permissions
                 self.handle_client_response(401, response_params)
-                return ;
+                return False
+
+        if blocked_sites and not self.check_permissions():
+            self.handle_client_response(401, response_params)
+            return False
+        return True
+
+    def handle_cache(self, url, request_map, response_params):
+        """
+        Handles execution of checking cache if-modified-since date,
+        and if not returns execution
+        """
+        # if item is cached...
+        if self.proxy_manager.is_cached(url):
+            old_response = self.proxy_manager.get_cached_resource(url)
+            new_head = self.head_request_to_server(url, request_map)
+            # compare
+            try:
+                if old_response.headers["If-Modified-Since"] == new_head.headers["If-Modified-Since"]:
+                    response_params['response'] = old_response
+
+                    self.handle_client_response(304, response_params)
+                    return False
+            except KeyError:
+                pass
+
+        return True
 
     def process_client_request(self, http_request_string):
         """
@@ -369,22 +477,24 @@ class ProxyThread:
             # make sure correct parameters?
             http_version = request_map["http_version"]
             method = request_map["method"]
-            if http_version != "1.0" or http_version != "1.1":
-                # complain
-                pass
+            # if http_version != "1.0" or http_version != "1.1":
+            #     # assuming only 1.0s and 1.1s are used.
+            #     # complain
+            #     pass
 
             url = request_map["url"]
             url, query_params = extract_query_params(url, "is_private_mode")
 
             query_params = params_to_map(query_params)
             # holds data needed to parse in respond
-            response_params = { 'request_map': request_map  }
+            response_params = { 'request_map': request_map, 'original_url': url }
             # get client's ip
             self.client_ip = request_map["Host"]
 
             if int(query_params["is_private_mode"]) == 1:
                 # make sure authed
-                self.handle_auth(request_map, response_params)
+                if not self.handle_auth(request_map, response_params):
+                    return ;
                 # user has sufficient permissions at this point.            
                 response = self.get_request_to_server(url, request_map)
             else:
@@ -392,21 +502,26 @@ class ProxyThread:
                 # if is_cached(url):
                 # make head request
                 # else:
-                if needs_auth(url):
-                    self.handle_auth(request_map, response_params)
+                
                 # in handle_cache checks if proxy manager has url. if it does, it does a head request,
                 # checks if_modified_since date, if it is ok, it sends 300 instead. else execution flows
                 # back here.
-                self.handle_cache(request_map, response_params)
+                if not self.handle_cache(url, request_map, response_params):
+                    return ;
 
                 response = self.get_request_to_server(url, request_map)
 
+            if self.proxy_manager.is_site_blocked(url):
+                if not self.handle_auth(request_map, response_params, blocked_sites=True):
+                    return ;
+
+            response_params['response'] = response
+
             if 200<=response.status_code< 300 or response.status_code == 304:
                 if int(query_params["is_private_mode"]) != 1:
-                    # self.
-                    pass
+                    self.proxy_manager.update_cache(url, response)
+                self.proxy_manager.add_history(url)
                 # check exists
-                response_params['response'] = response
                 
                 self.handle_client_response(200, response_params)
             else:
@@ -415,10 +530,11 @@ class ProxyThread:
             # Check response... 
             # sample response
             # self._send("""HTTP/1.1 200 OK\r\nDate: Tue, 22 Oct 2019 06:40:46 GMT\r\nServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.2k-fips PHP/5.4.16 mod_perl/2.0.10 Perl/v5.16.3\r\nX-Powered-By: PHP/5.4.16\r\nContent-Length: 7097\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><head><title>Blah</title></head><body style="color:red;">Boo</body></html>""")
-        except ParsingError:
+        except (ParsingError, KeyError):
             # this is encountered when during parsing of the headers, there is an error.
             # In this case, a 400 Bad Request is sent back to client.
             self.handle_client_response(400, {})
+        
            
     def _send(self, data):
         """
@@ -461,8 +577,8 @@ class ProxyThread:
             headers["Keep-Alive"] = param["Keep-Alive"]
         response = requests.head(url, headers = headers)
         print("HEAD to", url)
-        print(res)
-        return res
+        print(response)
+        return response
         
 
     def get_request_to_server(self, url, param):
