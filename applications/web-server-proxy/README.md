@@ -25,8 +25,12 @@ Installation:
 Make sure to have python 3.6.8 installed: https://www.python.org/downloads/release/python-368/.  
 clone this repo: `git clone https://github.com/sfsu-joseo/csc645-01-fall2019-projects-savingPrivateEric.git`  
 
-Execution:  
-For this project, there are two main scripts of interest: server.py and client.py.  
+Dependencies:  
+Make sure to have the following installed with `pip3 install <dependency name>`:  
+- flask
+- requests
+
+Execution:    
 cd to proper root directory: `cd applications/web-proxy-server`  
 start the ProxyServer: `python3 proxy_server/proxy_server.py`  
 start the Flask application: `python3 web-proxy-server.py`  
