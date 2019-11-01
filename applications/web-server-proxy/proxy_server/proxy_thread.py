@@ -13,7 +13,6 @@ import pickle
 import requests
 import socket
 import time
-# import validators
 
 class ClientDisconnect(Exception):
     """Signals client disconnect
@@ -40,7 +39,9 @@ def extract_query_params(url, explicit_field=""):
     :return: (url, query_params)
     """
     # if explicit_field:
+    # finds last instance of ? to grab last query parameter
     last_instance = url.rfind("?")
+    # none found
     if last_instance < 0:
         return (url, "")
     substr = url[last_instance+1:]
@@ -53,6 +54,8 @@ def extract_query_params(url, explicit_field=""):
 def params_to_map(data):
     """
     Parses a query parameter or POST body parameter into map
+    :param data: "some=thing&other=thing"...
+    :return {}: {'some':'thing','other':'thing'}
     """
     # needs to be at least s=1
     if len(data) < 3:
@@ -73,37 +76,18 @@ def params_to_map(data):
 def parse_for_field(response, field = ""):
     """
     Given an HTTP Response, parses for certain attribute...
+    :param response: http string
+    :param field: field to search for.
+    :return {}: map of HTTP response fields to values.
     """
     lines = response.split("\r\n")
     map = {}
 
     map["body"] = lines[-1]
-    # get HTML
-    # if field == "body":
-    #     # if looking for HTML content or POST body parameters...
-    #     return map["body"]
-
     map["top"] = lines[0]
-    # get HTTP Method path, and version...
-    # if field == "top":
-    #     # ie. GET / HTTP/1.1
-    #     return map["top"]
-
     map["method"] = lines[0].split(' ')[0]
-    # if field == "method":
-    #     # ie. GET
-    #     return map["method"]
-
     map["url"] = lines[0].split(' ')[1]
-    # if field == "url":
-    #     # ie. /
-    #     return map["url"]
-
     map["http_version"] = lines[0].split(' ')[2][5:]
-    # if field == "http_version":
-    #     # ie. 1.1
-    #     return map["http_version"]
-
     for i in range(1, len(lines) - 1):
         try:
             # for each line not header and body
@@ -118,19 +102,6 @@ def parse_for_field(response, field = ""):
     except KeyError:
         raise ParsingError(f"Error parsing for field: {field}")
 
-def network_exception_handler(func):
-    def wrap_func(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except socket.error as sock_error:
-            print(f"An HTTPError occurred: {sock_error}")
-        except ClientDisconnect:
-            print("Client has disconnected")
-        except Exception as e:
-            print(f"Something went wrong: {e}")
-        # raise ClientDisconnect()
-    return wrap_func
-
 class ProxyThread:
     """
     The proxy thread class represents a threaded proxy instance to handle a specific request from a client socket
@@ -144,7 +115,7 @@ class ProxyThread:
         self.client_id = client_addr[1]
         self.client_ip = ""
         self.permission = False # whether or not user is authenticated
-        self.role = "EMPLOYEE" # role of user "CEO, CTO, etc.." Default is EMPLOYEE
+        self.role = "EMPLOYEE" # permission mode of user: "super", "user", or "EMPLOYEE"
         self.KEEP_ALIVE_TIME=115 # time to keep idle connection alive(seconds)
         self.server_ip = server_ip
 
@@ -184,7 +155,6 @@ class ProxyThread:
             while True:
                 # start timer
                 tick = time.time()
-                print(client_req)
                 self.process_client_request(client_req)
                 # increment number of request/responses
                 num_of_requests += 1
@@ -198,17 +168,9 @@ class ProxyThread:
             print(f"An HTTPError occurred: {sock_error}")
         except ClientDisconnect:
             print("Client has disconnected")
-        # except Exception as e:
-        #     print(f"Something went wrong: {e}")
-            # send to client error?
-        # clean up stuff...
+        except Exception as e:
+            print(f"Something went wrong: {e}")
         self.client.close()
-
-    def client_id(self):
-        """
-        :return: the client id
-        """
-        return self.client_id
 
     def _mask_ip_address(self):
         """
@@ -226,7 +188,6 @@ class ProxyThread:
         response = params['response']
         http_version = req_map["http_version"]
         content_length = len(response.text)
-        # print(response.text)
 
         response_header = "HTTP/{} 200 OK\r\nServer: Ricware\r\nX-Powered-By: CODE/1.0.0\r\n".format(http_version)
         content_end = "Content-Length: {}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n{}".format(content_length, response.text)
@@ -248,7 +209,6 @@ class ProxyThread:
         response = params['response']
         http_version = req_map["http_version"]
         content_length = len(response.text)
-        # print(response.text)
 
         response_header = "HTTP/{} 304 Not Modified\r\nServer: Ricware\r\nX-Powered-By: CODE/1.0.0\r\n".format(http_version)
         content_end = "Content-Length: {}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n{}".format(content_length, response.text)
@@ -268,7 +228,6 @@ class ProxyThread:
         """
         req_map = params['request_map']
         http_version = req_map["http_version"]
-        # content_end = ""
         content = "<!DOCTYPE HTML><html><head><title>401</title></head><body><h1>401 Unauthorized:</h1> resource is blocked or not authorized for the current user.</body></html>"
 
         response_header = 'HTTP/{} 401 Unauthorized\r\nServer: Ricware\r\nX-Powered-By: CODE/1.0.0\r\nProxy-Authenticate: Basic realm="proxyserver"\r\n'.format(http_version)
@@ -285,8 +244,7 @@ class ProxyThread:
         Sends 400 response to client Bad Request 
         """
         req_map = params['request_map']
-        http_version = req_map["http_version"]
-        # content_end = ""
+        http_version = '1.1' # req_map["http_version"]
         content = "<!DOCTYPE HTML><html><head><title>401</title></head><body><h1>400 Bad Request:</h1> the request is not understood by the original server or the proxy server</body></html>"
 
         response_header = 'HTTP/{} 400 Bad Request\r\nServer: Ricware\r\nX-Powered-By: CODE/1.0.0\r\n'.format(http_version)
@@ -304,7 +262,6 @@ class ProxyThread:
         req_map = params['request_map']
         http_version = req_map["http_version"]
         content = "<!DOCTYPE HTML><html><head><title>401</title></head><body><h1>404 Not Found:</h1> the original server has not found anything matching the Request URI provided by the proxy server.</body></html>"
-        # content_end = ""
 
         response_header = 'HTTP/{} 404 Not Found\r\nServer: Ricware\r\nX-Powered-By: CODE/1.0.0\r\n'.format(http_version)
         content_end = "Content-Length: {}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n{}".format(len(content), content)
@@ -321,7 +278,6 @@ class ProxyThread:
         """
         req_map = params['request_map']
         http_version = req_map["http_version"]
-        # content_end = ""
         content = '<!DOCTYPE HTML><html><head><title>401</title></head><body><h1>407 Proxy Authentication Required:</h1> the proxy needs authorization based on client credentials in order to continue with the request.</body></head>'
 
         response_header = 'HTTP/{} 407 Proxy Authentication Required\r\nServer: Ricware\r\nX-Powered-By: CODE/1.0.0\r\nProxy-Authenticate: Basic realm="proxyserver"\r\n'.format(http_version)
@@ -339,7 +295,6 @@ class ProxyThread:
         """
         req_map = params['request_map']
         http_version = req_map["http_version"]
-        # content_end = ""
         content = "<!DOCTYPE HTML><html><head><title>401</title></head><body><h1>403 Forbidden:</h1> the server or the proxy server understood the request but the current user is forbidden to see the content of the resource requested. Authorization won’t work either in this case.</body></html>"
 
         response_header = 'HTTP/{} 403 Forbidden\r\nServer: Ricware\r\nX-Powered-By: CODE/1.0.0\r\n'.format(http_version)
@@ -355,7 +310,7 @@ class ProxyThread:
         """
         Handles which response to send to users given code.
         """
-        print("Sending: {} response".format(code))
+        print("Sending: {} response to {}".format(code, self.client_id))
         if code == 200:
             self.respond_ok(params)
         elif code == 304:
@@ -385,7 +340,6 @@ class ProxyThread:
         """
         Gets userrole from proxy manager, returns True if user is authorized
         """
-        print(username, password)
         # if mask:
         #     self._mask_ip_address()
         # check proxymanager if user/pw is in proxymanager.
@@ -399,11 +353,12 @@ class ProxyThread:
 
     def handle_auth(self, request_map, response_params,blocked_sites=False):
         """
-        Note that execution flows if the user is authenticating/authenticated
+        Note that execution flows back to calling function if the user is authenticating/authenticated
         :param request_map: used to check request
         :param response_params: used in response
+        :return: Bool if to continue execution
         """
-        if not self.permission:
+        if not self.permission or request_map["method"] == "POST":
             # ask for permissions
             if request_map["method"] != "POST":
                 # if not an attempt to login and not logged in, ask to login
@@ -427,6 +382,7 @@ class ProxyThread:
                 return False
 
         if blocked_sites and not self.check_permissions():
+            # unauthorized
             self.handle_client_response(401, response_params)
             return False
         return True
@@ -435,6 +391,8 @@ class ProxyThread:
         """
         Handles execution of checking cache if-modified-since date,
         and if not returns execution
+        :param url: url to check
+        :return: Bool if to continue execution
         """
         # if item is cached...
         if self.proxy_manager.is_cached(url):
@@ -473,21 +431,15 @@ class ProxyThread:
         :return: VOID
         """
         try:
+            # get a mapping of HTTP request string to HTTP request fields
             request_map = parse_for_field(http_request_string)
-            # make sure correct parameters?
-            http_version = request_map["http_version"]
-            method = request_map["method"]
-            # if http_version != "1.0" or http_version != "1.1":
-            #     # assuming only 1.0s and 1.1s are used.
-            #     # complain
-            #     pass
 
             url = request_map["url"]
             url, query_params = extract_query_params(url, "is_private_mode")
 
             query_params = params_to_map(query_params)
             # holds data needed to parse in respond
-            response_params = { 'request_map': request_map, 'original_url': url }
+            response_params = { 'request_map': request_map }
             # get client's ip
             self.client_ip = request_map["Host"]
 
@@ -498,11 +450,6 @@ class ProxyThread:
                 # user has sufficient permissions at this point.            
                 response = self.get_request_to_server(url, request_map)
             else:
-                # check if cached...
-                # if is_cached(url):
-                # make head request
-                # else:
-                
                 # in handle_cache checks if proxy manager has url. if it does, it does a head request,
                 # checks if_modified_since date, if it is ok, it sends 300 instead. else execution flows
                 # back here.
@@ -516,26 +463,19 @@ class ProxyThread:
                     return ;
 
             response_params['response'] = response
-
             if 200<=response.status_code< 300 or response.status_code == 304:
                 if int(query_params["is_private_mode"]) != 1:
                     self.proxy_manager.update_cache(url, response)
-                self.proxy_manager.add_history(url)
-                # check exists
-                
+                    self.proxy_manager.add_history(url)
+
                 self.handle_client_response(200, response_params)
             else:
                 self.handle_client_response(404, response_params)
-            # print(http_request_string)
-            # Check response... 
-            # sample response
-            # self._send("""HTTP/1.1 200 OK\r\nDate: Tue, 22 Oct 2019 06:40:46 GMT\r\nServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.2k-fips PHP/5.4.16 mod_perl/2.0.10 Perl/v5.16.3\r\nX-Powered-By: PHP/5.4.16\r\nContent-Length: 7097\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><head><title>Blah</title></head><body style="color:red;">Boo</body></html>""")
         except (ParsingError, KeyError):
             # this is encountered when during parsing of the headers, there is an error.
             # In this case, a 400 Bad Request is sent back to client.
             self.handle_client_response(400, {})
         
-           
     def _send(self, data):
         """
         Serialialize data 
@@ -566,9 +506,6 @@ class ProxyThread:
         :param param: additions to session header
         :return: the headers of the response from the original server
         """
-        # with requests.Session() as session:
-        #     response = session.head(url)
-    
         headers = {}
         # add custom headers
         if "Connection" in param:
@@ -576,10 +513,7 @@ class ProxyThread:
         if "Keep-Alive" in param:
             headers["Keep-Alive"] = param["Keep-Alive"]
         response = requests.head(url, headers = headers)
-        print("HEAD to", url)
-        print(response)
         return response
-        
 
     def get_request_to_server(self, url, param):
         """
@@ -588,9 +522,6 @@ class ProxyThread:
         :param param: additions to session header
         :return: the complete response including the body of the response
         """
-        # with requests.Session() as session:
-            # session.headers.update({})
-            # response = session.get(url)
         headers = {}
         # add custom headers
         if "Connection" in param:
@@ -598,40 +529,4 @@ class ProxyThread:
         if "Keep-Alive" in param:
             headers["Keep-Alive"] = param["Keep-Alive"]
         response = requests.get(url, headers = headers)
-        print("GET to", url)
-        print(response)
         return response
-
-
-    def response_from_server(self, request):
-        """
-        Method already made for you. No need to modify
-        :param request: a python dictionary with the following 
-                        keys and values {'mode': 'GET OR HEAD', 'url': 'yoursite.com', 'param': []} 
-        :return: 
-        """
-        mode = request['mode']
-        url = request['url']
-        param = request['param']
-        if mode == "GET":
-            return self.get_request_to_server(url, param)
-        return self.head_request_to_server(url, param)
-
-    def send_response_to_client(self, data):
-        """
-        The response sent to the client must contain at least the headers and body of the response 
-        :param data: a response created by the proxy. Please check slides for response format
-        :return: VOID
-        """
-        """HTTP/1.1 200 OK\r\nDate: Tue, 22 Oct 2019 06:40:46 GMT\r\nServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.2k-fips PHP/5.4.16 mod_perl/2.0.10 Perl/v5.16.3\r\nX-Powered-By: PHP/5.4.16\r\nContent-Length: 7097\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><head><title>Blah</title></head><body>Boo</body></html>"""
-
-    def create_response_for_client(self):
-        """
-        
-        :return: the response that will be passed as a parameter to the method send_response_to_client()
-        """
-        """HTTP/1.1 200 OK\r\nDate: Tue, 22 Oct 2019 06:40:46 GMT\r\nServer: Apache/2.4.6 (CentOS) OpenSSL/1.0.2k-fips PHP/5.4.16 mod_perl/2.0.10 Perl/v5.16.3\r\nX-Powered-By: PHP/5.4.16\r\nContent-Length: 7097\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n<html><head><title>Blah</title></head><body>Boo</body></html>"""
-
-if __name__=="__main__":
-    d, k = extract_query_params("gogole.com/dsf?s=5", "s")
-    print(params_to_map(k))

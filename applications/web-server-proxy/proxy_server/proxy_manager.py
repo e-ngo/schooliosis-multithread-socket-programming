@@ -7,6 +7,7 @@ import os
 import glob
 import pickle
 import re
+import threading
 
 BASE_PATH = os.path.abspath(os.path.dirname(__file__))
 
@@ -18,8 +19,11 @@ def sanitize(url):
 
 class ProxyManager:
     """
-    Manages all the elements from cache and proxy-settings page
+    Manages all the elements from cache and proxy-settings page.
+    Note: proxy_admins, private_mode_auth, managers_credentials, and sites_blocked are not persistent.
     """
+    CACHE_LOCK = threading.Lock()
+    HISTORY_LOCK = threading.Lock()
 
     def __init__(self):
         self.init_settings()
@@ -36,8 +40,6 @@ class ProxyManager:
         # append data in the form {'email: email, 'passw': passw}
         self.managers_credentials = [{'email':'manager@example.com', 'passw':'123'}]
         self.cached = []
-        self.clear_history()
-
 
     def add_admin(self, email, passw):
         """
@@ -67,9 +69,7 @@ class ProxyManager:
         :return: true if is admin, otherwise, returns false
         """
         admin_list = self.list_of_admins()
-        print("admins")
         for admin in admin_list:
-            print(admin)
             if admin['email'] == email and admin['passw'] == passw:
                 return True
         return False
@@ -85,9 +85,7 @@ class ProxyManager:
         Checks if email, passw matches that of privatemodeauth user
         """
         pm_list = self.private_mode_auth
-        print("Private")
         for pm in pm_list:
-            print(pm)
             if pm['email'] == email and pm['passw'] == passw:
                 return True
         return False
@@ -141,9 +139,7 @@ class ProxyManager:
         :return: True is the employee is upper management, otherwise, returns false
         """
         manager_list = self.managers_credentials
-        print("Managers")
         for manager in manager_list:
-            print(manager)
             if manager['email'] == email and manager['passw'] == passw:
                 return True
         return False
@@ -156,8 +152,9 @@ class ProxyManager:
         """
         path = os.path.abspath(os.path.dirname(__file__))
         url_hash = sanitize(url)
-        with open("{}/cache/resources/{}.pickle".format(BASE_PATH, url_hash), "wb") as file_handle:
-            pickle.dump(response, file_handle, protocol=pickle.HIGHEST_PROTOCOL)
+        with self.CACHE_LOCK:
+            with open("{}/cache/resources/{}.pickle".format(BASE_PATH, url_hash), "wb") as file_handle:
+                pickle.dump(response, file_handle, protocol=pickle.HIGHEST_PROTOCOL)
         if not self.is_cached(url):
             self.cached.append(url)
     def is_cached(self, url):
@@ -200,9 +197,12 @@ class ProxyManager:
         
         :return: VOID
         """
+        # generate list of files with .pickle extension in given directory
         files = glob.glob('{}/cache/resources/*.pickle'.format(BASE_PATH))
-        for f in files:
-            os.remove(f)
+        with self.CACHE_LOCK:
+            for f in files:
+                # remove each file
+                os.remove(f)
         self.cached = []
     
     def get_cache(self):
@@ -210,7 +210,9 @@ class ProxyManager:
         
         :return: VOID
         """
+        # generate list of files with .pickle extension in given directory
         files = glob.glob('{}/cache/resources/*.pickle'.format(BASE_PATH))
+        # generate list of cached urls
         cached_file_names = []
         for f in files:
             s = f.split('/')[-1]
@@ -236,16 +238,18 @@ class ProxyManager:
         """
         history_list = self.get_history()
         history_list.append(url)
-        with open("{}/cache/history.pickle".format(BASE_PATH), "wb") as file_handle:
-            pickle.dump(history_list, file_handle, protocol=pickle.HIGHEST_PROTOCOL)
+        with self.HISTORY_LOCK:
+            with open("{}/cache/history.pickle".format(BASE_PATH), "wb") as file_handle:
+                pickle.dump(history_list, file_handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     def clear_history(self):
         """
         
         :return: VOID
         """
-        with open("{}/cache/history.pickle".format(BASE_PATH), "wb") as file_handle:
-            pickle.dump([], file_handle, protocol=pickle.HIGHEST_PROTOCOL)
+        with self.HISTORY_LOCK:
+            with open("{}/cache/history.pickle".format(BASE_PATH), "wb") as file_handle:
+                pickle.dump([], file_handle, protocol=pickle.HIGHEST_PROTOCOL)
 
     def clear_all(self):
         """

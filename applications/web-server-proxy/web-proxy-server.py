@@ -17,9 +17,9 @@ def home():
 
 @app.route('/proxy-settings', methods=['GET', 'POST'])
 def proxy_settings():
-    print("Something...")
     pm = ProxyManager()
-
+    # parse form for new changes. Note that because admin, manager, and private_mode_user credentials are hard-coded,
+    # manually update the ProxyManager's init code.
     if request.method == 'POST':
         if request.form.get('addnewadmin') == 'True':
             new_manager = request.form.get('admins')
@@ -43,6 +43,10 @@ def proxy_settings():
         if request.form.get('clearcache') == 'True':
             # clear cache
             pm.clear_cache()
+        if request.form.get('clearhistory') == 'True':
+            # clear cache
+            pm.clear_history()
+    # get proxy manager settings
     admins = pm.list_of_admins()
     managers = pm.managers_credentials
     blocked_sites = pm.sites_blocked
@@ -63,8 +67,8 @@ def get_user_input():
         is_private_mode = 1
     if "proxy-settings" in url:
         return proxy_settings()
-    
-    if is_private_mode == 1:
+    # if private mode selected or email or password is passed in...
+    if is_private_mode == 1 or ( email != "" or password != "" ):
         data = {'url': url, 'is_private_mode': is_private_mode, 'client_ip':request.remote_addr, 'http_version': request.environ.get('SERVER_PROTOCOL'), 'user_name': email, 'password': password}
     else:
         # makes new client. request_to_proxy....
@@ -72,8 +76,6 @@ def get_user_input():
 
     client.request_to_proxy(data)
     res = client.response_from_proxy()
-
-    print(res)
 
     html_body = res.split("\r\n")[-1]
     return html_body

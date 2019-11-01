@@ -7,12 +7,6 @@ class ServerDisconnect(Exception):
     """
     pass
 
-class ParsingError(Exception):
-    """
-    Signals error when parsing
-    """
-    pass
-
 def network_exception_handler(func):
     def wrap_func(*args, **kwargs):
         try:
@@ -24,22 +18,6 @@ def network_exception_handler(func):
         except Exception as e:
             print(f"Something went wrong: {e}")
     return wrap_func
-
-
-def parse_for_field(response, field):
-    """
-    Given an HTTP Response, parses for certain field...
-    """
-    lines = response.split("\r\n")
-    
-    for line in lines:
-        # if field == "\r\n":
-            # if looking for HTML content...
-
-        if line.startswith(field):
-            return line
-    
-    raise ParsingError(f"Error parsing for field: {field}")
 
 class Client:
     """
@@ -76,8 +54,8 @@ class Client:
             # Connects to the server using its host IP and port
             self.client_socket.connect((host_ip, port))
         except OSError:
-            pass
             # socket already connected
+            pass
 
     @network_exception_handler
     def _send(self, data):
@@ -104,62 +82,26 @@ class Client:
         server_data = pickle.loads(server_response)
         return server_data
 
-    def parse_url(self, url):
-        """Parses url for path and host
-
-        """
-        # host: (www.)subdomain.domain.com
-        # path: /(path...)
-        
-        # remove protocol part...
-        start_of_host = url.find("://")
-        if start_of_host > -1:
-            start_of_host += 3
-        else:
-            start_of_host = 0
-        start_of_path = url.find("/", start_of_host)
-        path = ''
-        if start_of_path == -1:
-            # if path part not found,
-            host = url[start_of_host:]
-        else:
-            host = url[start_of_host:start_of_path]
-            path = url[start_of_path:]
-        return (path, host)
-
     @network_exception_handler
     def request_to_proxy(self, data):
         """
         Create the request from data 
         request must have headers and can be GET or POST. depending on the option
         then send all the data with _send() method
-        :param data: url and private mode 
+        :param data: {'url': url, 'is_private_mode': is_private_mode, 'client_ip': '127.0.0.1', 'http_version': 'HTTP/1.1', 'user_name': email, 'password': password}
         :return: VOID
         """
-        # path, host = self.parse_url(data['url'])
-        # self._connect_to_server(Client.SERVER_HOST, Client.SERVER_PORT)
+        # adds private mode option to query param
         original_url = data['url'] + f"?is_private_mode={data['is_private_mode']}"
         
         body = ""
-        try:
-            if data['user_name']:
-                body += f"user_name={data['user_name']}"
-        except KeyError:
-            # user_name not provided...
-            pass
-        try:
-            if data['password']:
-                if body:
-                    body += "&"
+        # create body response if user_name and password passed in
+        if 'user_name' in data:
+            body += f"user_name={data['user_name']}"
+        if 'password' in data:
+            if body:
+                body += "&"
                 body += f"password={data['password']}"
-
-        except KeyError:
-            pass
-
-        # auth:
-        # username = ""
-        # password = ""
-        # "Proxy-Authorization: Basic {}:{}".format(username, password)
 
         if len(body):
             # if there is body...
@@ -183,11 +125,6 @@ class Client:
         """
         # receive data
         response = self._receive()
-        # handle response(extract headers, return pretty params?...)
-        # print("Resonse form proxy", response)
-        # non-persistent: closer socket afterwards...
-        # self._disconnect()
-        # render HTML
         return response
 
 if __name__=="__main__":
