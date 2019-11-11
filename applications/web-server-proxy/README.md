@@ -1,3 +1,9 @@
+## Instructor Comments
+
+Eric, you did a really good job in this assignment. The only thing that you forgot to implement is when an user enters a url without 'http://' you should validate those cases too, and the client should add it if needed before sending the request. 
+
+Grade: 100/100 plus 2% extracredit added to your final grade.
+
 # Name (Student ID):
 Eric Ngo (917905955)
 
