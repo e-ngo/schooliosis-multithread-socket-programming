@@ -10,6 +10,9 @@ in the swarm)
  the tracker, so the tracker can update that info in the swarm where they are
  sharing the resource
 
+Centralized server, holds infor about one or more torresntand associated swarms.
+Functions as gateway for peers into a swarm. 
+In centralized P2P, functions as HTTP service and does not provide accesds to any downlaoding data.
 """
 from server import Server
 
