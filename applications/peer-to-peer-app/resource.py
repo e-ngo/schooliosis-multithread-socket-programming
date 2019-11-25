@@ -107,6 +107,11 @@ class Resource(object):
         """
         return None
 
+    def make_persistent(self, file_path):
+        """
+        Given a set 
+        """
+
 
 class Piece(object):
     """

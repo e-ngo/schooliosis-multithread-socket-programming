@@ -27,10 +27,7 @@ def network_exception_handler(func):
 
 class Client:
 
-    BUFFER_SIZE = 65536
-    # ProxyServer constants
-    SERVER_HOST = '127.0.0.1'
-    SERVER_PORT = 12001
+    BUFFER_SIZE = (2 ** 14) - 1 # 16 KB
 
     def __init__(self):
         """
@@ -54,8 +51,8 @@ class Client:
         :return: VOID
         """
         try:
-            # Connects to the server using its host IP and port
-            self.client_socket.connect((host_ip, port))
+            # make connection
+            self.client_socket.connect((ip_address, port))
         except OSError:
             # socket already connected
             pass
@@ -93,4 +90,5 @@ class Client:
         TODO: implement the close mechanish of a client socket
         :return: VOID
         """
-        pass
+        self.client_socket.close()
+        # self.client_socket.shutdown()

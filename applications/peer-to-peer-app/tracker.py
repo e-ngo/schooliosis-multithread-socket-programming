@@ -18,7 +18,7 @@ from server import Server
 
 class Tracker(Server):
 
-    PORT = 12000
+    PORT = 50000
     IP_ADDRESS = "127.0.0.1"
 
     def __init__(self, ip_address = None, port = 0):

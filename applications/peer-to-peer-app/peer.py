@@ -81,6 +81,8 @@ class Peer(Client, Server):
         :param torrent_path:
         :return: the metainfo
         """
+        
+
         return None
 
     def change_role(self, new_role):

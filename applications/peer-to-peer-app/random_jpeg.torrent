@@ -1,12 +1,5 @@
 {
    "announce": "http://127.0.0.1:50000",
-   "announce-list": [
-      [
-         "http://127.0.0.1:50000"
-      ]
-   ],
-   "created by": "kimbatt.github.io/torrent-creator",
-   "creation date": 1574139536,
    "info": {
       "length": 405431,
       "name": "randommmmm.jpeg",
