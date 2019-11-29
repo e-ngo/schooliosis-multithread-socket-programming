@@ -47,11 +47,22 @@ class Tracker(Server):
 
             if option == "get_swarm":
                 self.send_peers(client_sock, data)
+                continue
+            if option == "get_peer":
+                # self.get_
+                pass #TODO?
+            elif option == "add_peer_to_swarm":
+                res = self.add_peer_to_swarm(data["peer"], data["resource_id"])
+            elif option == "change_peer_status":
+                res = self.change_peer_status(data["peer"], data["resource_id"])
+            elif option == "add_swarm":
+                res = self.add_swarm(data)
+            elif option == "remove_swarm":
+                res = self.remove_swarm(data)
             else:
                 print("Invalid option")
                 break
-
-
+            self.send(client_sock, res)
 
     def add_swarm(self, swarm):
         """
@@ -61,6 +72,7 @@ class Tracker(Server):
         :return:
         """
         self.swarms.append(swarm)
+        return True
 
     def remove_swarm(self, resource_id):
         """
@@ -72,7 +84,11 @@ class Tracker(Server):
         :param resource_id:
         :return: VOID
         """
-        pass
+        for swarm in self.swarms:
+            if swarm.resource_id == resource_id:
+                del swarm
+                return True
+        return False
 
     def add_peer_to_swarm(self, peer, resource_id):
         """
@@ -85,8 +101,27 @@ class Tracker(Server):
         :return: VOID
         """
         print(f"Adding peer to {resource_id} swarm")
+        swarm = self._get_swarm_object(resource_id)
 
-    def change_peer_status(self, resource_id):
+        if swarm:
+            swarm.add_peer(peer)
+            return True
+        return False
+
+    def _get_swarm_object(self, resource_id):
+        """
+        Given resource_id, returns swarm object in swarms list 
+        that has resource_id
+        :param resource_id:
+        :return swarm_object:
+        """
+        ret = None
+        for swarm in self.swarms:
+            if swarm.resource_id == resource_id:
+                ret = swarm
+                break
+
+    def change_peer_status(self, peer, resource_id):
         """
         TODO: implement this method
         When a peers in a swarm report a change of status
@@ -96,7 +131,14 @@ class Tracker(Server):
         :param resource_id:
         :return: VOID
         """
-        pass
+        swarm = self._get_swarm_object(resource_id) # TODO
+
+        # if swarm:
+        #     swarm.(peer)
+        #     return True
+        # return False
+        # ???
+        return False
 
     def send_peers(self, peer_socket, resource_id):
         """
@@ -110,14 +152,8 @@ class Tracker(Server):
         :return: VOID
         """
         print(f"Sending {resource_id} swarm information")
-        
-        ret = None
-        for swarm in self.swarms:
-            if swarm.resource_id == resource_id:
-                ret = swarm
-                break
 
-        self.send(peer_socket, ret)
+        self.send(peer_socket, self._get_swarm_object(resource_id))
 
 
 if __name__ == "__main__":

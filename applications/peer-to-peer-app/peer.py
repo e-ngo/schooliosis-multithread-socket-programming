@@ -43,6 +43,8 @@ class Peer(Client, Server):
         self.connect(ip_address, port)
         
         self.send({"option": "get_swarm", "message": resource_name})
+        # MRO pulls from client because invalid function signature for server
+        
         res = self.receive()
         
         # disconnect from tracker? Connect to swarm...? or part of external script process
