@@ -29,11 +29,29 @@ class Tracker(Server):
         :param ip_address:
         :param port:
         """
-        Server.__init__(self)
-        self.port = port
-        self.ip = ip_address
+        self.IP_ADDRESS = ip_address or self.IP_ADDRESS
+        self.PORT = port or self.PORT
+        Server.__init__(self,  self.IP_ADDRESS, self.PORT)
         # the list of swarms that this tracker keeps
         self.swarms = []
+
+    def handle_client_logic(self, client_sock, client_addr):
+        """
+        This function contains the logic that will go into the server's main client handling logic.
+        """
+        # main server loop
+        while True:
+            request = self.receive(client_sock) # {"option", "message"}
+            option = request["option"]
+            data = request["message"]
+
+            if option == "get_swarm":
+                self.send_peers(client_sock, data)
+            else:
+                print("Invalid option")
+                break
+
+
 
     def add_swarm(self, swarm):
         """
@@ -66,7 +84,7 @@ class Tracker(Server):
         :param resource_id:
         :return: VOID
         """
-        pass
+        print(f"Adding peer to {resource_id} swarm")
 
     def change_peer_status(self, resource_id):
         """
@@ -91,6 +109,19 @@ class Tracker(Server):
                sharing this resource
         :return: VOID
         """
-        pass
+        print(f"Sending {resource_id} swarm information")
+        
+        ret = None
+        for swarm in self.swarms:
+            if swarm.resource_id == resource_id:
+                ret = swarm
+                break
+
+        self.send(peer_socket, ret)
 
 
+if __name__ == "__main__":
+    tracker = Tracker()
+    print(tracker.host_ip)
+    print(tracker.host_port)
+    tracker.listen(tracker.handle_client_logic)

@@ -1,7 +1,13 @@
 # -*- coding: utf-8 -*-
 """ The peer """
+import json
+
+# local imports
 from server import Server
 from client import Client
+from logger import Logging
+
+logger = Logging()
 
 class Peer(Client, Server):
 
@@ -22,7 +28,7 @@ class Peer(Client, Server):
         self.max_download_rate = max_download_rate
         self.max_upload_rate = max_upload_rate
 
-    def connect_to_tracker(self, ip_address, port):
+    def connect_to_tracker(self, ip_address, port, resource_name):
         """
         TODO: implement this method
         Connect to the tracker. Note that a tracker in this assignment
@@ -34,7 +40,13 @@ class Peer(Client, Server):
         :param port:
         :return: the swarm object with all the info from the peers connected to the swarm
         """
-        return None
+        self.connect(ip_address, port)
+        
+        self.send({"option": "get_swarm", "message": resource_name})
+        res = self.receive()
+        
+        # disconnect from tracker? Connect to swarm...? or part of external script process
+        return res
 
     def connect_to_swarm(self, swarm):
         """
@@ -81,9 +93,18 @@ class Peer(Client, Server):
         :param torrent_path:
         :return: the metainfo
         """
+        try:
+            logger.log("Peer", f"Opening file: {torrent_path}")
+            with open(torrent_path, "r") as file_handle:
+                json_data = json.load(file_handle)
+            return json_data
+        except FileNotFoundError:
+            print(f"File: {torrent_path} not found")
+        except Exception as e:
+            print(e)
+        logger.log("Peer", "Something went wrong getting metainfo")
         
-
-        return None
+        raise Exception(f"Error getting metainfo from {torrent_path}")
 
     def change_role(self, new_role):
         """
@@ -116,10 +137,10 @@ class Peer(Client, Server):
         """
         pass
 
-    def recieve_message(self):
+    def receive_message(self):
         """
         TODO: implement this method
-        (1) recieve the message
+        (1) receive the message
         (2) inspect the message (i.e does it have payload)
         (4) If this was the last block of a piece, then you need
             to compare the piece with the sha1 from the torrent file
@@ -195,4 +216,3 @@ class Peer(Client, Server):
         :return: VOID
         """
         self.interested = False
-

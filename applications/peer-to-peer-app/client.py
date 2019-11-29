@@ -43,16 +43,16 @@ class Client:
             print("socket creation failed with error", (err))
 
     @network_exception_handler
-    def connect(self, ip_adress, port):
+    def connect(self, ip_address, port):
         """
         TODO: Implement connection to server sockets
-        :param ip_adress:
+        :param ip_address:
         :param port:
         :return: VOID
         """
         try:
             # make connection
-            self.client_socket.connect((ip_address, port))
+            self.client_socket.connect((ip_address, int(port)))
         except OSError:
             # socket already connected
             pass
@@ -72,13 +72,14 @@ class Client:
         self.client_socket.send(data_serialized)
 
     @network_exception_handler
-    def recieve(self, memory_allocation_size):
+    def receive(self, memory_allocation_size = None):
         """
         TODO: implement receives data from server socket
         :param memory_allocation_size:
         :return: deserialized data
         """
-        server_response = self.client_socket.recv(self.BUFFER_SIZE)
+        memory_allocation_size = memory_allocation_size or self.BUFFER_SIZE
+        server_response = self.client_socket.recv(memory_allocation_size)
         if not server_response:
             raise ServerDisconnect()
         # Deserializes the data.

@@ -7,6 +7,7 @@ assignment #1.
 import socket
 import pickle
 import threading
+import os
 
 class ClientDisconnect(Exception):
     """Signals client disconnect
@@ -29,7 +30,7 @@ class Server(object):
         self.host_ip = host_ip
         self.host_port = host_port
 
-    def listen(self):
+    def listen(self, func = None):
         """
         TODO: implement this method
         Listen for new connections
@@ -37,12 +38,12 @@ class Server(object):
         """
         try:
             # associate the socket to host and port
-            server_socket.bind((self.host_ip, self.host_port))
+            self.server_socket.bind((self.host_ip, self.host_port))
             # listen and accept clients
-            server_socket.listen()
-            print(f"Server started\nListening at {self.HOST}({self.PORT}):")
+            self.server_socket.listen()
+            print(f"Server started\nListening at {self.host_ip}({self.host_port}):")
             while True:
-                self.accept()
+                self.accept(func)
             
         except socket.error as sock_error:
             print(sock_error)
@@ -51,11 +52,11 @@ class Server(object):
         except Exception as e:
             print("An exception has occurred", e)
 
-        server_socket.close()
+        self.server_socket.close()
         print("Closing the server")
         os._exit(0)
 
-    def accept(self):
+    def accept(self, func = None):
         """
         TODO: implement this method
         Accept new clients
@@ -64,25 +65,26 @@ class Server(object):
         client_sock, addr = self.server_socket.accept()
         self.clients[addr[1]] = client_sock
         print(f"Client {addr} has connected!")
-        thread = threading.Thread(target=self.threaded_client, args=(client_sock, addr))
+        thread = threading.Thread(target=self.threaded_client, args=(client_sock, addr, func))
         thread.start()
 
-    def receive(self, memory_allocation_size):
+    def receive(self, client_sock, memory_allocation_size = None):
         """
         TODO: implement this method
         Receives data from clients socket
         :param memory_allocation_size:
         :return: deserialized data
         """
-        self.client.settimeout(self.KEEP_ALIVE_TIME)
-        client_request = self.client.recv(self.BUFFER_SIZE)
+        memory_allocation_size = memory_allocation_size or self.MAX_DATA_RECV
+        # client_sock.settimeout(self.KEEP_ALIVE_TIME)
+        client_request = client_sock.recv(self.MAX_DATA_RECV)
         if not client_request:
             raise ClientDisconnect()
         # Deserializes the data.
         client_data = pickle.loads(client_request)
         return client_data
 
-    def send(self, data):
+    def send(self, client_sock, data):
         """
         TODO: implement this method
         Implements send socket send method
@@ -94,9 +96,9 @@ class Server(object):
         :return: VOID
         """
         data_serialized = pickle.dumps(data)
-        self.client.send(data_serialized)
+        client_sock.send(data_serialized)
 
-    def threaded_client(self, conn, client_addr):
+    def threaded_client(self, conn, client_addr, func = None):
         """
         TODO: implement this method
         :param conn:
@@ -106,7 +108,8 @@ class Server(object):
         print("Thread {} started".format(client_addr[1]))
         # main logic?...
         try:
-            pass
+            if func:
+                func(conn, client_addr)
         except Exception as e:
             print(e)
         
@@ -114,6 +117,3 @@ class Server(object):
         # clean up
         del self.clients[client_addr[1]]
         print("Thread {} ended".format(client_addr[1]))
-
-
-
