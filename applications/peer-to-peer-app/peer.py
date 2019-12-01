@@ -6,6 +6,7 @@ import json
 from server import Server
 from client import Client
 from logger import Logging
+from resource import Resource
 
 logger = Logging()
 
@@ -27,6 +28,7 @@ class Peer(Client, Server):
         self.interested = False
         self.max_download_rate = max_download_rate
         self.max_upload_rate = max_upload_rate
+        self.peer_id = None
 
     def connect_to_tracker(self, ip_address, port, resource_name):
         """
@@ -41,6 +43,8 @@ class Peer(Client, Server):
         :return: the swarm object with all the info from the peers connected to the swarm
         """
         self.connect(ip_address, port)
+        # get peer_id
+        self.peer_id = self.receive()
         
         self.send({"option": "get_swarm", "message": resource_name})
         # MRO pulls from client because invalid function signature for server
@@ -86,7 +90,6 @@ class Peer(Client, Server):
 
     def get_metainfo(self, torrent_path):
         """
-        TODO: implement this method
         (1) Create an empty resource object
         (2) call the method parse_metainfo() from that object
             which must return all the fields and values from
@@ -95,6 +98,8 @@ class Peer(Client, Server):
         :param torrent_path:
         :return: the metainfo
         """
+        # should resource_id be a random number?...
+        resource = Resource()
         try:
             logger.log("Peer", f"Opening file: {torrent_path}")
             with open(torrent_path, "r") as file_handle:

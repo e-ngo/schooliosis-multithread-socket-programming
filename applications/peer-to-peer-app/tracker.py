@@ -14,6 +14,8 @@ Centralized server, holds infor about one or more torresntand associated swarms.
 Functions as gateway for peers into a swarm. 
 In centralized P2P, functions as HTTP service and does not provide accesds to any downlaoding data.
 """
+from swarm import Swarm
+from resource import Resource
 from server import Server
 
 class Tracker(Server):
@@ -39,6 +41,9 @@ class Tracker(Server):
         """
         This function contains the logic that will go into the server's main client handling logic.
         """
+        # on intiial connection send new client their peer_id (process id).
+        self.send(client_sock, client_addr[1])
+
         # main server loop
         while True:
             request = self.receive(client_sock) # {"option", "message"}
@@ -152,9 +157,12 @@ class Tracker(Server):
         :return: VOID
         """
         print(f"Sending {resource_id} swarm information")
-
-        self.send(peer_socket, self._get_swarm_object(resource_id))
-
+        swarm = self._get_swarm_object(resource_id)
+        # if swarm DNE, create it
+        if not swarm:
+            swarm = swarm(resource_id)
+            self.add_swarm(swarm)
+        self.send(peer_socket, swarm)
 
 if __name__ == "__main__":
     tracker = Tracker()

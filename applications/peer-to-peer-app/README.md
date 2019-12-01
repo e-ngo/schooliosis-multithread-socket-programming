@@ -49,3 +49,6 @@ Known Issues: If the site requested is too large, the socket receive will be una
 # Challenges:
 A large part of this assignment was to figure out exactly the scopes of each requirements. Given an existing code base (the template), I was to figure out how the components work with respect to the documentation guidelines. Many challenges I have faced were trying to understand how to complete the requirements. Turns out that many times, I would be overthinking the assignment. Other times, I would be passively learning instead of actively learning.  
 After starting to think on my own and think more simply, I was able to finish the assignment.
+
+# Notes:
+Swarm objects are created in tracker if requested resource_id does not exist.

@@ -4,6 +4,7 @@ This file contains the classes Resource, Piece and Block to provide
 services and functionalities needed from a resource in a swarm.
 """
 import hashlib
+import math
 
 class Resource(object):
     """
@@ -35,7 +36,7 @@ class Resource(object):
         :param port:
         :return: VOID
         """
-        return None
+        self.trackers.append(f"{ip_address}:{port}")
 
     def get_trackers(self):
         """
@@ -53,15 +54,13 @@ class Resource(object):
 
     def name(self):
         """
-        TODO: implement this method
-        Extract the name of the file path from the patch
+        Extract the name of the file path from the path
         :return: the name of the file
         """
-        return None
+        return self.file_path.split("/")[-1]
 
     def _create_pieces(self):
         """
-        TODO: Implement this method
         Private method.
         This method will divide the file in pieces (same size)
         with the only exception of the last piece which has
@@ -69,7 +68,10 @@ class Resource(object):
         :return: VOID
         """
         self.pieces = [] # list of objects of pieces. (see Piece class)
-
+        # hash groupings (160 bits for sha1 hash), about 20 hexadecimal chars
+        num_pieces = math.ceil(self.len / self.max_piece_size)
+        for i in range(num_pieces):
+            self.pieces.append(Piece())
 
     def get_piece(self, index):
         """
@@ -90,6 +92,7 @@ class Resource(object):
         4. return the hashes list
         """
         hashes = []
+
         return hashes
 
     def parse_metainfo(self, file_path):
@@ -111,6 +114,7 @@ class Resource(object):
         """
         Given a set 
         """
+        pass
 
 
 class Piece(object):
