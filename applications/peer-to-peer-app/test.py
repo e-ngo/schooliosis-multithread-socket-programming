@@ -12,4 +12,7 @@ if __name__ == "__main__":
     tracker = resource.get_trackers()[0]
 
     swarm = peer.connect_to_tracker(tracker.split(":")[0], tracker.split(":")[1], resource.name())
-    print(swarm)
+    
+
+
+    print(swarm.peers)

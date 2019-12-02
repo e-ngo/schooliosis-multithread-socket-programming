@@ -21,7 +21,7 @@ class Peer(Client, Server):
         """
         TODO: implement the class constructor
         """
-        Server.__init__(self) # inherites methods from Server class
+        Server.__init__(self, '127.0.0.1') # inherites methods from Server class, temporary inputs for ip
         Client.__init__(self) # inherites methods from Client class
         self.status = self.PEER
         self.chocked = False
@@ -51,7 +51,18 @@ class Peer(Client, Server):
         self.connect(ip_address, port)
         # get peer_id
         self.peer_id = self.receive()
-        
+
+        # add self to list of clients... this is done in tracker?...
+        self.send({"option": "add_peer_to_swarm", "message": {
+            "peer":[self.host_ip, self.host_port, self.status],  # key identifying features for peer
+            "resource_id": resource_name
+        }})
+
+        tmp = self.receive()
+
+        if not tmp:
+            raise Exception("Could not add peer to swarm")
+
         self.send({"option": "get_swarm", "message": resource_name})
         # MRO pulls from client because invalid function signature for server
         
@@ -73,7 +84,7 @@ class Peer(Client, Server):
         :param swarm: Swarm object returned from the tracker
         :return: VOID
         """
-        pass
+        
 
     def upload_rate(self):
         """

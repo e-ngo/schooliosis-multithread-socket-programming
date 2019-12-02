@@ -18,12 +18,16 @@ from swarm import Swarm
 from resource import Resource
 from server import Server
 
+import pickle
+import threading
+
 class Tracker(Server):
 
     PORT = 50000
     IP_ADDRESS = "127.0.0.1"
+    SWARM_LOCK = threading.Lock()
 
-    def __init__(self, ip_address = None, port = 0):
+    def __init__(self, ip_address = None, port = 0, file_path = None):
         """
         TODO: finish constructor implementation (if needed)
         If parameters ip_address and port are not set at the object creation time,
@@ -35,7 +39,24 @@ class Tracker(Server):
         self.PORT = port or self.PORT
         Server.__init__(self,  self.IP_ADDRESS, self.PORT)
         # the list of swarms that this tracker keeps
-        self.swarms = []
+        if file_path:
+            self.swarms = self.current_swarms_or_new(file_path)
+        else: 
+            self.swarms = self.current_swarms_or_new()
+        print("Current swarms list: ", self.swarms)
+
+    def current_swarms_or_new(self, file_path = "./tmp/swarms.pickle"):
+        """
+        Attempts to pull the old swarms list from storage
+        """
+        try:
+            with open(file_path, "rb") as file_handle:
+                s = pickle.load(file_handle)
+        except FileNotFoundError:
+            s = []
+        finally:
+            return s or []
+
 
     def handle_client_logic(self, client_sock, client_addr):
         """
@@ -45,7 +66,7 @@ class Tracker(Server):
         self.send(client_sock, client_addr[1])
 
         # main server loop
-        while True:
+        while True: # Should this be a loop? 
             request = self.receive(client_sock) # {"option", "message"}
             option = request["option"]
             data = request["message"]
@@ -53,17 +74,17 @@ class Tracker(Server):
             if option == "get_swarm":
                 self.send_peers(client_sock, data)
                 continue
-            if option == "get_peer":
-                # self.get_
-                pass #TODO?
+            # elif option == "get_peer":
+            #     # self.get_
+            #     pass #TODO?
             elif option == "add_peer_to_swarm":
                 res = self.add_peer_to_swarm(data["peer"], data["resource_id"])
-            elif option == "change_peer_status":
-                res = self.change_peer_status(data["peer"], data["resource_id"])
-            elif option == "add_swarm":
-                res = self.add_swarm(data)
-            elif option == "remove_swarm":
-                res = self.remove_swarm(data)
+            # elif option == "change_peer_status":
+            #     res = self.change_peer_status(data["peer"], data["resource_id"])
+            # elif option == "add_swarm":
+            #     res = self.add_swarm(data)
+            # elif option == "remove_swarm":
+            #     res = self.remove_swarm(data)
             else:
                 print("Invalid option")
                 break
@@ -92,26 +113,46 @@ class Tracker(Server):
         for swarm in self.swarms:
             if swarm.resource_id == resource_id:
                 del swarm
+                self.make_persistent()
                 return True
         return False
 
-    def add_peer_to_swarm(self, peer, resource_id):
+    def peer_in_swarm(self, peer, swarm):
+        """
+        Returns if peer already in swarm
+        """
+        for pere in swarm.peers:
+            if peer[0] == pere[0] and peer[1] == pere[1]:
+                # update status if applicable...
+                pere[2] = peer[2]
+                return True
+            return False
+
+    def add_peer_to_swarm(self, peer, resource_id, swarm = None):
         """
         TODO: implement this method
         Based on the resource_id provided, iterate over the
         swarms list, and when resource_id matchs, add the
         new peer to the swarm.
-        :param peer:
+        :param peer: (peer_ip, peer_port)
         :param resource_id:
         :return: VOID
         """
         print(f"Adding peer to {resource_id} swarm")
-        swarm = self._get_swarm_object(resource_id)
+        swarm = swarm or self._get_swarm_object(resource_id)
 
-        if swarm:
+        if not swarm:
+            swarm = Swarm(resource_id)
+            self.add_swarm(swarm)
+            
+        print(peer)
+        print(swarm)
+        # avoid dups
+        if not self.peer_in_swarm(peer, swarm):
             swarm.add_peer(peer)
-            return True
-        return False
+        self.make_persistent()
+        return True
+        # return False # error
 
     def _get_swarm_object(self, resource_id):
         """
@@ -125,6 +166,7 @@ class Tracker(Server):
             if swarm.resource_id == resource_id:
                 ret = swarm
                 break
+        return ret
 
     def change_peer_status(self, peer, resource_id):
         """
@@ -143,6 +185,7 @@ class Tracker(Server):
         #     return True
         # return False
         # ???
+        self.make_persistent()
         return False
 
     def send_peers(self, peer_socket, resource_id):
@@ -159,10 +202,20 @@ class Tracker(Server):
         print(f"Sending {resource_id} swarm information")
         swarm = self._get_swarm_object(resource_id)
         # if swarm DNE, create it
-        if not swarm:
-            swarm = Swarm(resource_id)
-            self.add_swarm(swarm)
+        # if not swarm:
+        #     swarm = Swarm(resource_id)
+        #     self.add_swarm(swarm)
+        # self.add_peer_to_swarm((), resource_id, swarm)
+        print(swarm)
         self.send(peer_socket, swarm)
+
+    def make_persistent(self, file_path="./tmp/swarms.pickle"):
+        """
+        Given a set ???
+        """
+        with self.SWARM_LOCK:
+            with open(file_path, "wb") as file_handle:
+                pickle.dump(self.swarms, file_handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 if __name__ == "__main__":
     tracker = Tracker()

@@ -13,7 +13,7 @@ class Resource(object):
     """
     This class provides services to handle resources
     """
-    def __init__(self, resource_id = 0, file_path = None, file_len = 0, piece_len = 0):#, file_name = None ):
+    def __init__(self, resource_id = 0, file_path = None, file_len = 0, piece_len = 0, seed = False):#, file_name = None ):
         """
         TODO: complete the implementation of this constructor.
         :param resource_id: default 0
@@ -28,9 +28,8 @@ class Resource(object):
         self.trackers = []
         self.completed = []  # the pieces that are already completed
         # self.file_name = file_name
-
+        self.seed = seed
         self._create_pieces() # creates the file's pieces
-
 
     def add_tracker(self, ip_address, port):
         """
@@ -139,26 +138,19 @@ class Resource(object):
         pieces = json_data["info"]["pieces"]
 
         return {"file_name":resource_id, "tracker_ip_address":tracker_ip, "tracker_port":tracker_port, "piece_len":piece_length, "file_len": torrent_length, "pieces":pieces, "path": resource_path}
-        
-
-    def make_persistent(self, file_path):
-        """
-        Given a set ???
-        """
-        pass
-
 
 class Piece(object):
     """
     This class provides the services needed to handle pieces from a resource (file)
     """
-    def __init__(self, data, piece_id, resource_id):
+    def __init__(self, data, piece_id, resource_id, seed = False):
         self.data = data
         self.resource_id = resource_id
         self.piece_id = piece_id
         self._create_blocks()
         self.hash = self._hash_sha1()
         self.completed = False
+        self.seed = seed
 
 
     def _create_blocks(self, max_size = 16):

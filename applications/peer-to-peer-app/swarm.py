@@ -31,12 +31,6 @@ class Swarm(object):
                 del p
                 break
 
-    def peers(self):
-        """
-        TODO: implement this method
-        :return: the list of peers connected to the swarm
-        """
-        return self.peers
 
     def resource_id(self):
         """

@@ -5,3 +5,5 @@ node_modules
 test.py
 ENV*
 .mypy_cache
+*.pickle
+log.txt
