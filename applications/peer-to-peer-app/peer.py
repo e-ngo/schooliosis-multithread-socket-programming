@@ -26,8 +26,14 @@ class Peer(Client, Server):
         self.status = self.PEER
         self.chocked = False
         self.interested = False
-        self.max_download_rate = max_download_rate
-        self.max_upload_rate = max_upload_rate
+        if max_download_rate:
+            self.max_download_rate = max_download_rate
+        else:
+            self.max_download_rate = int(input("Input Max Download Rate (b/s): "))
+        if max_upload_rate:
+            self.max_upload_rate = max_upload_rate
+        else:
+            self.max_upload_rate = int(input("Input Max Upload Rate (b/s): "))
         self.peer_id = None
 
     def connect_to_tracker(self, ip_address, port, resource_name):
@@ -99,12 +105,15 @@ class Peer(Client, Server):
         :return: the metainfo
         """
         # should resource_id be a random number?...
-        resource = Resource()
         try:
-            logger.log("Peer", f"Opening file: {torrent_path}")
-            with open(torrent_path, "r") as file_handle:
-                json_data = json.load(file_handle)
-            return json_data
+            ma_map = Resource.parse_metainfo(torrent_path)
+
+            resource = Resource(resource_id=ma_map["file_name"],file_path=ma_map["path"],file_len=ma_map["file_len"], piece_len=ma_map["piece_len"])
+
+            resource.add_tracker(ma_map["tracker_ip_address"], ma_map["tracker_port"])
+
+            return resource
+
         except FileNotFoundError:
             print(f"File: {torrent_path} not found")
         except Exception as e:

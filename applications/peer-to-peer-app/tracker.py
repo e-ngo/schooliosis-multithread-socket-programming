@@ -160,7 +160,7 @@ class Tracker(Server):
         swarm = self._get_swarm_object(resource_id)
         # if swarm DNE, create it
         if not swarm:
-            swarm = swarm(resource_id)
+            swarm = Swarm(resource_id)
             self.add_swarm(swarm)
         self.send(peer_socket, swarm)
 

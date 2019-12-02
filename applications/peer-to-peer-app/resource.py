@@ -4,13 +4,16 @@ This file contains the classes Resource, Piece and Block to provide
 services and functionalities needed from a resource in a swarm.
 """
 import hashlib
+import json
 import math
+from bitstring import BitArray, BitStream
+
 
 class Resource(object):
     """
     This class provides services to handle resources
     """
-    def __init__(self, resource_id = 0, file_path = None, file_len = 0, piece_len = 0 ):
+    def __init__(self, resource_id = 0, file_path = None, file_len = 0, piece_len = 0):#, file_name = None ):
         """
         TODO: complete the implementation of this constructor.
         :param resource_id: default 0
@@ -19,12 +22,14 @@ class Resource(object):
         :param piece_len: default 0
         """
         self.file_path = file_path
-        self.resource_id = resource_id
+        self.resource_id = resource_id # file name is resource_id
         self.len = file_len
         self.max_piece_size = piece_len
-        self._create_pieces() # creates the file's pieces
         self.trackers = []
         self.completed = []  # the pieces that are already completed
+        # self.file_name = file_name
+
+        self._create_pieces() # creates the file's pieces
 
 
     def add_tracker(self, ip_address, port):
@@ -57,7 +62,8 @@ class Resource(object):
         Extract the name of the file path from the path
         :return: the name of the file
         """
-        return self.file_path.split("/")[-1]
+        # return self.file_name or self.file_path.split("/")[-1]
+        return self.resource_id # I am using resource_id to hold name
 
     def _create_pieces(self):
         """
@@ -95,7 +101,8 @@ class Resource(object):
 
         return hashes
 
-    def parse_metainfo(self, file_path):
+    @staticmethod
+    def parse_metainfo(file_path):
         """
         TODO: implement this method
         Parse the ,torrent file containing the metainfo for this resource
@@ -108,11 +115,35 @@ class Resource(object):
                  Note that the key pieces will store the list of sh1a hashes from each piece
                  of the file. You can assume
         """
-        return None
+        with open(file_path, "r") as file_handle:
+            json_data = json.load(file_handle)
+
+        temp = json_data["announce"].split(":")
+        if len(temp) < 2 or len(temp) > 3:
+            raise Exception("Torrent tracker announce has invalid format")
+
+        tracker_port = temp[-1]
+        tracker_url = temp[-2]
+
+        tracker_ip = tracker_url.split("//")[-1]
+
+        try:
+            resource_path = json_data["info"]["path"] # the seeder might not set the install path?
+        except KeyError:
+            pass
+
+        resource_id = json_data["info"]["name"]
+
+        torrent_length = json_data["info"]["length"]
+        piece_length = json_data["info"]["piece length"]
+        pieces = json_data["info"]["pieces"]
+
+        return {"file_name":resource_id, "tracker_ip_address":tracker_ip, "tracker_port":tracker_port, "piece_len":piece_length, "file_len": torrent_length, "pieces":pieces, "path": resource_path}
+        
 
     def make_persistent(self, file_path):
         """
-        Given a set 
+        Given a set ???
         """
         pass
 
