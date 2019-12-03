@@ -116,7 +116,7 @@ class Resource(object):
             with open(self.file_path, "rb") as seed_file:
                 for i in range(num_pieces):
                     chunk = seed_file.read(self.max_piece_size)
-                    self.pieces.append(Piece(chunk, i, self.resource_id, self.seed, self.max_piece_size))
+                    self.pieces.append(Piece(chunk, i, self.resource_id, self.max_piece_size, self.seed))
         else:
             for i in range(num_pieces):
                 self.pieces.append(Piece(None, i, self.resource_id, self.max_piece_size))
@@ -186,10 +186,14 @@ class Resource(object):
         After all data sent, all hashes checked, save file to storage to given file_path
         """
         file_path = file_path or self.file_path # should be self.file_path
+        once = False
         with open(file_path , "wb") as fw:
             for piece in self.pieces:
                 for block in piece.blocks:
-                    print(block.piece_id, block.block_id, block.data)
+                    # print(block.piece_id, block.block_id, block.data)
+                    if not once:
+                        print(f"Piece num {len(self.pieces)} block num {len(piece.blocks)} Total size {self.len}")
+                        once = True
                     fw.write(block.data)
 
 class Piece(object):
@@ -224,7 +228,8 @@ class Piece(object):
 
         block_len = math.ceil(self.max_piece_size / max_size_in_bytes)
 
-        for i in range(max_size_in_bytes):
+        for i in range(block_len):
+            print(f"MPS: {self.max_piece_size}, MSIB: {max_size_in_bytes}")
             block = Block(i, self.piece_id, self.resource_id)
             if self.data:
                 start = i * max_size_in_bytes
@@ -234,6 +239,7 @@ class Piece(object):
                 print(f"Data: {data}")
                 block.fill_data(data)
             self.blocks.append(block)
+        return self.blocks
 
     def _set_hash_sha1(self, data = None):
         """
