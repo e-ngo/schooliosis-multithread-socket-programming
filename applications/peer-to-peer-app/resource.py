@@ -8,12 +8,33 @@ import json
 import math
 from bitstring import BitArray, BitStream
 
+def remove_tags(string):
+    """
+    Given string, removes any bracket tags, ie. "<hex>f" => "f"
+    """
+    starter = -1
+    for i in range(len(string)): # look for the start of tag?
+        if string[i] == "<":
+            starter = i
+            break
+    if starter == -1:
+        return string #nothing to remove here
+    
+    ender = -1
+    for i in range(starter, len(string)):
+        if string[i] == ">":
+            ender = i
+            break
+    if ender == -1:
+        return string # nothing to remove here...
+
+    return string[0: starter] + string[ender: ]
 
 class Resource(object):
     """
     This class provides services to handle resources
     """
-    def __init__(self, resource_id = 0, file_path = None, file_len = 0, piece_len = 0, seed = False):#, file_name = None ):
+    def __init__(self, resource_id = 0, file_path = None, file_len = 0, piece_len = 0, pieces_hash = None, seed = False):#, file_name = None ):
         """
         TODO: complete the implementation of this constructor.
         :param resource_id: default 0
@@ -21,7 +42,7 @@ class Resource(object):
         :param file_len: default 0
         :param piece_len: default 0
         """
-        self.file_path = file_path
+        self.file_path = file_path # for non seeds, this is install path. For seeds, this is file path
         self.resource_id = resource_id # file name is resource_id
         self.len = file_len
         self.max_piece_size = piece_len
@@ -29,7 +50,22 @@ class Resource(object):
         self.completed = []  # the pieces that are already completed
         # self.file_name = file_name
         self.seed = seed
+        self.expected_pieces_hash = self.parse_hex_string_to_array(pieces_hash)
         self._create_pieces() # creates the file's pieces
+
+    def parse_hex_string_to_array(self, hex_string, delimiter = " "):
+        """
+        Given hex string with space delimiters
+        """
+        if not isinstance(hex_string, str):
+            return hex_string
+        # assuming in format: <hex>ff ff ff ff</hex> (note the space delimiters.)
+        hashes = hex_string.split(delimiter)
+        hashes[0] = remove_tags(hashes[0])
+        hashes[-1] = remove_tags(hashes[-1])
+
+        return hashes
+
 
     def add_tracker(self, ip_address, port):
         """
@@ -75,8 +111,15 @@ class Resource(object):
         self.pieces = [] # list of objects of pieces. (see Piece class)
         # hash groupings (160 bits for sha1 hash), about 20 hexadecimal chars
         num_pieces = math.ceil(self.len / self.max_piece_size)
-        for i in range(num_pieces):
-            self.pieces.append(Piece())
+
+        if self.seed: # if not seed, data will be None
+            with open(self.file_path, "rb") as seed_file:
+                for i in range(num_pieces):
+                    chunk = seed_file.read(self.max_piece_size)
+                    self.pieces.append(Piece(chunk, i, self.resource_id, self.seed, self.max_piece_size))
+        else:
+            for i in range(num_pieces):
+                self.pieces.append(Piece(None, i, self.resource_id, self.max_piece_size))
 
     def get_piece(self, index):
         """
@@ -97,6 +140,9 @@ class Resource(object):
         4. return the hashes list
         """
         hashes = []
+        # assuming files are in the format
+        for piece in self.pieces:
+            hashes.append(piece.get_hash)
 
         return hashes
 
@@ -126,11 +172,7 @@ class Resource(object):
 
         tracker_ip = tracker_url.split("//")[-1]
 
-        try:
-            resource_path = json_data["info"]["path"] # the seeder might not set the install path?
-        except KeyError:
-            pass
-
+        resource_path = json_data["info"]["path"] # for peers, is the install path. for seeds, this is the file_path
         resource_id = json_data["info"]["name"]
 
         torrent_length = json_data["info"]["length"]
@@ -139,21 +181,32 @@ class Resource(object):
 
         return {"file_name":resource_id, "tracker_ip_address":tracker_ip, "tracker_port":tracker_port, "piece_len":piece_length, "file_len": torrent_length, "pieces":pieces, "path": resource_path}
 
+    def save_torrent(self, file_path = None):
+        """
+        After all data sent, all hashes checked, save file to storage to given file_path
+        """
+        file_path = file_path or self.file_path # should be self.file_path
+        with open(file_path , "wb") as fw:
+            for piece in self.pieces:
+                for block in piece.blocks:
+                    print(block.piece_id, block.block_id, block.data)
+                    fw.write(block.data)
+
 class Piece(object):
     """
     This class provides the services needed to handle pieces from a resource (file)
     """
-    def __init__(self, data, piece_id, resource_id, seed = False):
+    def __init__(self, data, piece_id, resource_id, max_piece_size, seed = False):
         self.data = data
         self.resource_id = resource_id
         self.piece_id = piece_id
-        self._create_blocks()
-        self.hash = self._hash_sha1()
         self.completed = False
+        self.max_piece_size = max_piece_size
         self.seed = seed
+        self._create_blocks()
+        self.hash = self._set_hash_sha1()
 
-
-    def _create_blocks(self, max_size = 16):
+    def _create_blocks(self, max_size_in_bytes = 1024):
         """
         TODO: implement this method
         (1) It is important here to create small chucks of data
@@ -165,11 +218,24 @@ class Piece(object):
         (4) Append blocks created to the blocks list below
         (5) Return the blocks
         :param max_size: 16 KB set by default
-        :return: the blocks
+    :return: the blocks
         """
         self.blocks = []
 
-    def _hash_sha1(self, data = None):
+        block_len = math.ceil(self.max_piece_size / max_size_in_bytes)
+
+        for i in range(max_size_in_bytes):
+            block = Block(i, self.piece_id, self.resource_id)
+            if self.data:
+                start = i * max_size_in_bytes
+                end = min((i + 1) * max_size_in_bytes , self.max_piece_size)
+                data = self.data[start:end]
+                print(f"Start: {start}, End: {end}")
+                print(f"Data: {data}")
+                block.fill_data(data)
+            self.blocks.append(block)
+
+    def _set_hash_sha1(self, data = None):
         """
         Already implemented for you.
         Takes a string data, and create a sha1 hash
@@ -182,7 +248,11 @@ class Piece(object):
         """
         if not data:
             data = self.data
-        hash_object = hashlib.sha1(data.encode())
+        if not data:
+            return None
+        if isinstance(data, str):
+            data = data.encode() # 
+        hash_object = hashlib.sha1(data)
         return hash_object.hexdigest()
 
     def get_hash(self):
@@ -239,7 +309,23 @@ class Block(object):
         self.resource_id = resource_id
         self.piece_id = piece_id
         self.block_id = block_id
+        self.data = None
 
-    # TODO: think about which methods you would implement in this class.
+    def fill_data(self, data):
+        """
+        Setter for data
+        
+        """
+        self.data = data
 
+    def get_data(self):
+        """
+        Getter for data 
+        """
+        return self.data
 
+    def fulfilled(self):
+        """
+        Determines if Block is fulfilled.
+        """
+        return self.data is not None

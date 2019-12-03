@@ -26,9 +26,9 @@ class Server(object):
         Class contructor
         """
         if not host_ip:
-            host_ip = input("Please input the IP to listen on:")
+            host_ip = input("Please input the IP to listen on: ")
         if not host_port:
-            host_port = int(input("Please input the PORT to listen onto:"))
+            host_port = int(input("Please input the PORT to listen onto: "))
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.clients = {}
         self.host_ip = host_ip

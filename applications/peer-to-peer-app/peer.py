@@ -17,7 +17,7 @@ class Peer(Client, Server):
     SEEDER = 1
     LEECHER = 2
 
-    def __init__(self, max_upload_rate, max_download_rate):
+    def __init__(self, max_upload_rate = None, max_download_rate = None):
         """
         TODO: implement the class constructor
         """
@@ -105,7 +105,7 @@ class Peer(Client, Server):
         return None
 
 
-    def get_metainfo(self, torrent_path):
+    def get_metainfo(self, torrent_path, seeder = False):
         """
         (1) Create an empty resource object
         (2) call the method parse_metainfo() from that object
@@ -116,22 +116,22 @@ class Peer(Client, Server):
         :return: the metainfo
         """
         # should resource_id be a random number?...
-        try:
-            ma_map = Resource.parse_metainfo(torrent_path)
+        # try:
+        ma_map = Resource.parse_metainfo(torrent_path)
 
-            resource = Resource(resource_id=ma_map["file_name"],file_path=ma_map["path"],file_len=ma_map["file_len"], piece_len=ma_map["piece_len"])
+        resource = Resource(resource_id=ma_map["file_name"],file_path=ma_map["path"],file_len=ma_map["file_len"], piece_len=ma_map["piece_len"], pieces_hash=ma_map["pieces"], seed = seeder)
 
-            resource.add_tracker(ma_map["tracker_ip_address"], ma_map["tracker_port"])
+        resource.add_tracker(ma_map["tracker_ip_address"], ma_map["tracker_port"])
 
-            return resource
+        return resource
 
-        except FileNotFoundError:
-            print(f"File: {torrent_path} not found")
-        except Exception as e:
-            print(e)
+        # except FileNotFoundError:
+        #     print(f"File: {torrent_path} not found")
+        # except Exception as e:
+        #     print(e)
         logger.log("Peer", "Something went wrong getting metainfo")
         
-        raise Exception(f"Error getting metainfo from {torrent_path}")
+        # raise Exception(f"Error getting metainfo from {torrent_path}")
 
     def change_role(self, new_role):
         """
