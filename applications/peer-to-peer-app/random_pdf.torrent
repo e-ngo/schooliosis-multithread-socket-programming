@@ -1,0 +1,17 @@
+{
+   "announce": "http://localhost:50000",
+   "announce-list": [
+      [
+         "http://localhost:50000"
+      ]
+   ],
+   "created by": "kimbatt.github.io/torrent-creator",
+   "creation date": 1575777217,
+   "info": {
+      "length": 144442,
+      "name": "P2P.pdf",
+      "piece length": 16384,
+      "path": "./P2P.pdf",
+      "pieces": "<hex>A8 12 AC BF E0 CF 8E C4 D7 73 A0 FD A2 BA 55 BA 1B 1F 3B 1F D7 25 87 44 FD AC D2 0C 58 75 1D 1A EF 32 75 FB D9 6C 5C DF 1E 06 39 07 02 A3 B3 6C 17 1C C3 05 D1 8E 29 02 87 36 B9 C5 92 99 1B 10 44 7F 8B 53 E1 21 22 E6 3D 7B B9 C3 B8 2B D4 47 68 D5 29 A5 1E 60 1A 46 8F 4A 45 17 55 F8 D9 57 D2 8D 74 D2 A7 04 9F 44 9A 2F B0 CF DA 3C 5C 44 27 71 E0 0A 71 70 D9 10 78 1E 04 F2 A8 54 FD 1E FF 09 0E 39 6A CB 19 B9 06 AC D3 CA E5 FB 4F 65 9F C3 DD 1F 6C 6B D1 98 D4 AE BF 5F CC 2E F2 A1 69 55 CE 95 C3 D0 0B 64 0F 3B C7 DE FC 60 E7 A0 30 63 F9 6A</hex>"
+   }
+}

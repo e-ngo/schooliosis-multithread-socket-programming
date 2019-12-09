@@ -210,7 +210,7 @@ class Piece(object):
         self._create_blocks()
         self.hash = self._set_hash_sha1()
 
-    def _create_blocks(self, max_size_in_bytes = 1024):
+    def _create_blocks(self, max_size_in_bytes = 1023):
         """
         TODO: implement this method
         (1) It is important here to create small chucks of data

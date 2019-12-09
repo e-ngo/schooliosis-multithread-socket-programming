@@ -2,7 +2,7 @@ import json
 from peer import Peer
 
 """
-Script aims to provide execution flow of objects...
+Script aims to provide execution flow of seeder...
 
 """
 if __name__ == "__main__":

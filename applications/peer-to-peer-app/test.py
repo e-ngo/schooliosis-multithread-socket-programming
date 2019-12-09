@@ -2,12 +2,12 @@ import json
 from peer import Peer
 
 """
-Script aims to provide execution flow of objects...
+Script aims to provide execution flow of leecher...
 
 """
 if __name__ == "__main__":
     peer = Peer(5,5)
-    resource = peer.get_metainfo("./random_jpeg.torrent")
+    resource = peer.get_metainfo("./random_pdf.torrent")
 
     tracker = resource.get_trackers()[0]
 

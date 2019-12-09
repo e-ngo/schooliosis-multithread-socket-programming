@@ -26,6 +26,7 @@ class Tracker(Server):
     PORT = 50000
     IP_ADDRESS = "127.0.0.1"
     SWARM_LOCK = threading.Lock()
+    MAX_PEERS = 10
 
     def __init__(self, ip_address = None, port = 0, file_path = None):
         """
