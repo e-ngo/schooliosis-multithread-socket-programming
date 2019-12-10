@@ -20,6 +20,12 @@ class Swarm(object):
         """
         self.peers.append(peer)
 
+    def size(self):
+        """
+        Returns size of swarm
+        """
+        return len(self.peers)
+
     def delete_peer(self, peer):
         """
          TODO: implement this method

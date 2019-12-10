@@ -118,14 +118,14 @@ class Tracker(Server):
                 return True
         return False
 
-    def peer_in_swarm(self, peer, swarm):
+    def peer_in_swarm(self, new_peer, swarm):
         """
         Returns if peer already in swarm
         """
-        for pere in swarm.peers:
-            if peer[0] == pere[0] and peer[1] == pere[1]:
+        for peer in swarm.peers:
+            if new_peer[0] == peer[0] and new_peer[1] == peer[1]:
                 # update status if applicable...
-                pere[2] = peer[2]
+                peer[2] = new_peer[2]
                 return True
             return False
 
@@ -149,7 +149,7 @@ class Tracker(Server):
         print(peer)
         print(swarm)
         # avoid dups
-        if not self.peer_in_swarm(peer, swarm):
+        if not self.peer_in_swarm(peer, swarm) and swarm.size() < self.MAX_PEERS:
             swarm.add_peer(peer)
         self.make_persistent()
         return True

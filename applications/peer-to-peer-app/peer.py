@@ -35,6 +35,7 @@ class Peer(Client, Server):
         else:
             self.max_upload_rate = int(input("Input Max Upload Rate (b/s): "))
         self.peer_id = None
+        self.tracker_client = None
 
     def connect_to_tracker(self, ip_address, port, resource_name):
         """
@@ -48,25 +49,25 @@ class Peer(Client, Server):
         :param port:
         :return: the swarm object with all the info from the peers connected to the swarm
         """
-        self.connect(ip_address, port)
+        self.tracker_client = Client(ip_address, port)
         # get peer_id
-        self.peer_id = self.receive()
+        self.peer_id = self.tracker_client.receive()
 
         # add self to list of clients... this is done in tracker?...
-        self.send({"option": "add_peer_to_swarm", "message": {
+        self.tracker_client.send({"option": "add_peer_to_swarm", "message": {
             "peer":[self.host_ip, self.host_port, self.status],  # key identifying features for peer
             "resource_id": resource_name
         }})
 
-        tmp = self.receive()
+        tmp = self.tracker_client.receive()
 
         if not tmp:
             raise Exception("Could not add peer to swarm")
 
-        self.send({"option": "get_swarm", "message": resource_name})
+        self.tracker_client.send({"option": "get_swarm", "message": resource_name})
         # MRO pulls from client because invalid function signature for server
         
-        res = self.receive()
+        res = self.tracker_client.receive()
         
         # disconnect from tracker? Connect to swarm...? or part of external script process
         return res
@@ -129,7 +130,7 @@ class Peer(Client, Server):
         #     print(f"File: {torrent_path} not found")
         # except Exception as e:
         #     print(e)
-        logger.log("Peer", "Something went wrong getting metainfo")
+        # logger.log("Peer", "Something went wrong getting metainfo")
         
         # raise Exception(f"Error getting metainfo from {torrent_path}")
 
