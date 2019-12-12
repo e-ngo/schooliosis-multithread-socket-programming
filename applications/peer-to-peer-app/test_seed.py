@@ -6,13 +6,10 @@ Script aims to provide execution flow of seeder...
 
 """
 if __name__ == "__main__":
-    peer = Peer(5,5)
-    resource = peer.get_metainfo("./random_jpeg_seed.torrent", True)
+    peer = Peer(5,5, is_seed = True)
 
-    tracker = resource.get_trackers()[0]
-
-    swarm = peer.connect_to_tracker(tracker.split(":")[0], tracker.split(":")[1], resource.name())
+    peer.start()
     
-    resource.save_torrent("./test_save.jpeg")
+    peer.resource.save_torrent("./test_save.jpeg")
     
-    print(swarm.peers)
+    print(peer.swarm.peers)

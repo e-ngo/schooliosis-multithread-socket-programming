@@ -17,13 +17,13 @@ class Peer(Client, Server):
     SEEDER = 1
     LEECHER = 2
 
-    def __init__(self, max_upload_rate = None, max_download_rate = None):
+    def __init__(self, max_upload_rate = None, max_download_rate = None, is_seed=False):
         """
         TODO: implement the class constructor
         """
         Server.__init__(self, '127.0.0.1') # inherites methods from Server class, temporary inputs for ip
         Client.__init__(self) # inherites methods from Client class
-        self.status = self.PEER
+        self.status = self.PEER if not is_seed else self.SEEDER
         self.chocked = False
         self.interested = False
         if max_download_rate:
@@ -36,6 +36,22 @@ class Peer(Client, Server):
             self.max_upload_rate = int(input("Input Max Upload Rate (b/s): "))
         self.peer_id = None
         self.tracker_client = None
+        self.peer_clients = []
+
+        self.resource = None
+        self.swarm = None
+
+    def start(self, torrent_path):
+        """
+        Entry point for peer to peer/tracker interactions
+        """
+        self.resource = self.get_metainfo("torrent_path", self.status == self.SEEDER)
+
+        tracker = self.resource.get_trackers()[0]
+
+        self.swarm = self.connect_to_tracker(tracker.split(":")[0], tracker.split(":")[1], resource.name())
+
+        self.connect_to_swarm()
 
     def connect_to_tracker(self, ip_address, port, resource_name):
         """
@@ -49,13 +65,15 @@ class Peer(Client, Server):
         :param port:
         :return: the swarm object with all the info from the peers connected to the swarm
         """
-        self.tracker_client = Client(ip_address, port)
+        self.tracker_client = Client()
+
+        self.tracker_client.connect(ip_address, port)
         # get peer_id
         self.peer_id = self.tracker_client.receive()
 
         # add self to list of clients... this is done in tracker?...
         self.tracker_client.send({"option": "add_peer_to_swarm", "message": {
-            "peer":[self.host_ip, self.host_port, self.status],  # key identifying features for peer
+            "peer":[self.host_ip, self.host_port, self.peer_id, self.status],  # key identifying features for peer
             "resource_id": resource_name
         }})
 
@@ -69,7 +87,6 @@ class Peer(Client, Server):
         
         res = self.tracker_client.receive()
         
-        # disconnect from tracker? Connect to swarm...? or part of external script process
         return res
 
     def connect_to_swarm(self, swarm):
@@ -85,6 +102,11 @@ class Peer(Client, Server):
         :param swarm: Swarm object returned from the tracker
         :return: VOID
         """
+        for peer in swarm.peers:
+            if peer[2] != self.peer_id: # if not me
+                # connect to peer
+                client = Client()
+                client.connect()
         
 
     def upload_rate(self):
@@ -244,3 +266,4 @@ class Peer(Client, Server):
         :return: VOID
         """
         self.interested = False
+

@@ -33,7 +33,7 @@ class Swarm(object):
         :return: VOID
         """
         for p in self.peers:
-            if p == peer:
+            if p[2] == peer:
                 del p
                 break
 
