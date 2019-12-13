@@ -63,6 +63,8 @@ class Peer(Client, Server):
 
         self.connect_to_swarm(self.swarm)
 
+        self.listen(self.handle_client)
+
     def connect_to_tracker(self, ip_address, port, resource_name):
         """
         TODO: implement this method
@@ -120,7 +122,7 @@ class Peer(Client, Server):
                 client = Client()
                 client.connect(peer[0], peer[1])
                 # adds peer info and connection socket 
-                self.peer_clients.append(peer, client)
+                self.peer_clients.append([peer, client])
                 # start new thread?....
         
 
@@ -282,3 +284,6 @@ class Peer(Client, Server):
         """
         self.interested = False
 
+    def handle_client(self):
+        while True:
+            pass
