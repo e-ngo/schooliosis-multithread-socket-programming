@@ -80,12 +80,12 @@ class Tracker(Server):
             #     pass #TODO?
             elif option == "add_peer_to_swarm":
                 res = self.add_peer_to_swarm(data["peer"], data["resource_id"])
-            # elif option == "change_peer_status":
-            #     res = self.change_peer_status(data["peer"], data["resource_id"])
-            # elif option == "add_swarm":
-            #     res = self.add_swarm(data)
-            # elif option == "remove_swarm":
-            #     res = self.remove_swarm(data)
+            elif option == "change_peer_status":
+                res = self.change_peer_status(data["peer"], data["resource_id"])
+            elif option == "add_swarm":
+                res = self.add_swarm(data)
+            elif option == "remove_swarm":
+                res = self.remove_swarm(data)
             else:
                 print("Invalid option")
                 break
@@ -149,8 +149,13 @@ class Tracker(Server):
         print(peer)
         print(swarm)
         # avoid dups
-        if not self.peer_in_swarm(peer, swarm) and swarm.size() < self.MAX_PEERS:
-            swarm.add_peer(peer)
+        if not self.peer_in_swarm(peer, swarm):
+            if swarm.size() < self.MAX_PEERS:
+                swarm.add_peer(peer)
+            else:
+                # too many peers, 
+                print(f"Too many peers in {swarm.resource_id}")
+                return None
         self.make_persistent()
         return True
         # return False # error

@@ -10,6 +10,16 @@ from resource import Resource
 
 logger = Logging()
 
+"""
+TODO:
+Queue for reading
+Queue for writing
+1 threads to read and decide what to do, another for writing to every client.
+1 for server loop
+x threads for client connection to server
+x threads for peer connection to server
+"""
+
 class Peer(Client, Server):
 
     # status
@@ -45,13 +55,13 @@ class Peer(Client, Server):
         """
         Entry point for peer to peer/tracker interactions
         """
-        self.resource = self.get_metainfo("torrent_path", self.status == self.SEEDER)
+        self.resource = self.get_metainfo(torrent_path, self.status == self.SEEDER)
 
         tracker = self.resource.get_trackers()[0]
 
-        self.swarm = self.connect_to_tracker(tracker.split(":")[0], tracker.split(":")[1], resource.name())
+        self.swarm = self.connect_to_tracker(tracker.split(":")[0], tracker.split(":")[1], self.resource.name())
 
-        self.connect_to_swarm()
+        self.connect_to_swarm(self.swarm)
 
     def connect_to_tracker(self, ip_address, port, resource_name):
         """
@@ -103,10 +113,15 @@ class Peer(Client, Server):
         :return: VOID
         """
         for peer in swarm.peers:
+            #TODO Wrap in try catch
             if peer[2] != self.peer_id: # if not me
+                print(f"Connecting to {peer}")
                 # connect to peer
                 client = Client()
-                client.connect()
+                client.connect(peer[0], peer[1])
+                # adds peer info and connection socket 
+                self.peer_clients.append(peer, client)
+                # start new thread?....
         
 
     def upload_rate(self):
