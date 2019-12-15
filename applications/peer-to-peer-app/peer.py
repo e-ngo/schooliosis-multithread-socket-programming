@@ -7,6 +7,7 @@ from server import Server
 from client import Client
 from logger import Logging
 from resource import Resource
+import queue
 
 logger = Logging()
 
@@ -50,6 +51,11 @@ class Peer(Client, Server):
 
         self.resource = None
         self.swarm = None
+
+        # Queue used to hold messages for main message thread to handle
+        self.peer_handle_queue = queue.Queue()
+        # Queue used to hold messages for server to broadcast to its clients
+        self.peer_message_queue = queue.Queue()
 
     def start(self, torrent_path):
         """
@@ -124,7 +130,19 @@ class Peer(Client, Server):
                 # adds peer info and connection socket 
                 self.peer_clients.append([peer, client])
                 # start new thread?....
-        
+                # employ a new thread to talk to each peer...
+
+    def handle_client(self):
+        while True:
+            pass
+
+    def handle_peer(self, client_sock, ):
+        """
+        Handles client connection
+        """
+        # while peer is not a seeder
+        while self.status != self.SEEDER:
+
 
     def upload_rate(self):
         """
@@ -172,6 +190,7 @@ class Peer(Client, Server):
         # logger.log("Peer", "Something went wrong getting metainfo")
         
         # raise Exception(f"Error getting metainfo from {torrent_path}")
+
 
     def change_role(self, new_role):
         """
@@ -231,6 +250,7 @@ class Peer(Client, Server):
         """
         self.top_four = []
         # your implementation here
+        
         return self.top_four
 
     def verify_piece_downloaded(self, piece):
@@ -240,6 +260,8 @@ class Peer(Client, Server):
         :return: true if the piece is verified and is not corrupted, otherwisem, return false
         """
         return False
+
+
 
     def is_chocked(self):
         """
@@ -283,7 +305,3 @@ class Peer(Client, Server):
         :return: VOID
         """
         self.interested = False
-
-    def handle_client(self):
-        while True:
-            pass

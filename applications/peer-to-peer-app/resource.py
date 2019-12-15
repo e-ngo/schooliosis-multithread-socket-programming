@@ -200,17 +200,19 @@ class Piece(object):
     """
     This class provides the services needed to handle pieces from a resource (file)
     """
-    def __init__(self, data, piece_id, resource_id, max_piece_size, seed = False):
+    BLOCK_SIZE = 1024
+    def __init__(self, data, piece_id, resource_id, max_piece_size, seed = False, override_block_size = None):
         self.data = data
         self.resource_id = resource_id
         self.piece_id = piece_id
         self.completed = False
         self.max_piece_size = max_piece_size
         self.seed = seed
-        self._create_blocks()
+        self.block_size = override_block_size if override_block_size else self.BLOCK_SIZE
+        self._create_blocks(self.block_size)
         self.hash = self._set_hash_sha1()
 
-    def _create_blocks(self, max_size_in_bytes = 1023):
+    def _create_blocks(self, max_size_in_bytes = 1024):
         """
         TODO: implement this method
         (1) It is important here to create small chucks of data

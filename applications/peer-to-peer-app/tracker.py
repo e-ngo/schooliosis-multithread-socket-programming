@@ -219,9 +219,9 @@ class Tracker(Server):
         """
         Given a set ???
         """
-        with self.SWARM_LOCK:
-            with open(file_path, "wb") as file_handle:
-                pickle.dump(self.swarms, file_handle, protocol=pickle.HIGHEST_PROTOCOL)
+        # with self.SWARM_LOCK:
+        #     with open(file_path, "wb") as file_handle:
+        #         pickle.dump(self.swarms, file_handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 if __name__ == "__main__":
     tracker = Tracker()
