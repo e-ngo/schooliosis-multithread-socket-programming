@@ -117,9 +117,11 @@ class Resource(object):
                 for i in range(num_pieces):
                     chunk = seed_file.read(self.max_piece_size)
                     self.pieces.append(Piece(chunk, i, self.resource_id, self.max_piece_size, self.seed))
+                    self.completed.append(1)
         else:
             for i in range(num_pieces):
                 self.pieces.append(Piece(None, i, self.resource_id, self.max_piece_size))
+                self.completed.append(0)
 
     def get_piece(self, index):
         """

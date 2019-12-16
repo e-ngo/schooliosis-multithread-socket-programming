@@ -23,10 +23,10 @@ class Message(object):
 
         # number of pieces downloaded so far. This is optional and dangerious because a malicious peer may use this
         # info to create a security treat in the swarm.
-        self.have = 0
+        # self.have = 0
 
         # Only sent after the handshake. A list of bits representing the pieces already downloaded
-        # bit set to 1 means that the piece is complete. Bit set to 0 means that the piece is missing or incompleted.
+        # bit set to 1 means that the piece is complete. Bit set to 0 means that the piece is missing or incompleted. 0.5 means in progress.
         # [1,0,1,0,1] means that the peer sending this message is missing piece with index 1, and 3. Indexes start at 0
         self.bitfield = []
 
@@ -50,6 +50,5 @@ class Message(object):
         # the connection with the sender (similar to HTTP:1.0/TCP non-persistent connections)
         self.keep_alive = 0
 
-
-
-
+        # instead of relying on tracker, message protocol supports updating statuses of peers
+        self.status = 0

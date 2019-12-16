@@ -8,6 +8,7 @@ from client import Client
 from logger import Logging
 from resource import Resource
 import queue
+import threading
 
 logger = Logging()
 
@@ -19,6 +20,11 @@ Queue for writing
 1 for server loop
 x threads for client connection to server
 x threads for peer connection to server
+"""
+
+"""
+Note:
+Peer object has: 
 """
 
 class Peer(Client, Server):
@@ -131,18 +137,30 @@ class Peer(Client, Server):
                 self.peer_clients.append([peer, client])
                 # start new thread?....
                 # employ a new thread to talk to each peer...
+                thread_c = threading.Thread(target=self.handle_peer, args=(client_sock, peer))
+                thread_c.start()
+
 
     def handle_client(self):
+        """
+        Function to handle client connections
+        """
         while True:
             pass
 
-    def handle_peer(self, client_sock, ):
+    def handle_peer(self, client_sock, peer):
         """
-        Handles client connection
+        Threaded function to handle connection to peer, note this connection
+        is only useful if self is not a seeder
         """
         # while peer is not a seeder
         while self.status != self.SEEDER:
-
+            # send a message
+            # send initial info
+            message = Message()
+            message.interested = 1
+            
+            # see if peer is unchocked...
 
     def upload_rate(self):
         """
