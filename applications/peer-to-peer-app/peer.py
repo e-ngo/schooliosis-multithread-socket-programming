@@ -7,42 +7,32 @@ from server import Server
 from client import Client
 from logger import Logging
 from resource import Resource
+from message import Message
+from swarm import Swarm
 import queue
+import time
 import threading
 
 logger = Logging()
 
-"""
-TODO:
-Queue for reading
-Queue for writing
-1 threads to read and decide what to do, another for writing to every client.
-1 for server loop
-x threads for client connection to server
-x threads for peer connection to server
-"""
-
-"""
-Note:
-Peer object has: 
-"""
-
-class Peer(Client, Server):
+class Peer(Server):
 
     # status
     PEER = 0
     SEEDER = 1
     LEECHER = 2
+    BITFIELD_LOCK = threading.Lock()
+    MESSAGE_QUEUE_LOCK = threading.Lock()
 
     def __init__(self, max_upload_rate = None, max_download_rate = None, is_seed=False):
         """
         TODO: implement the class constructor
         """
-        Server.__init__(self, '127.0.0.1') # inherites methods from Server class, temporary inputs for ip
-        Client.__init__(self) # inherites methods from Client class
+        Server.__init__(self, '127.0.0.1') # inherits methods from Server class, temporary inputs for ip
+        # Client.__init__(self) # inherits methods from Client class
         self.status = self.PEER if not is_seed else self.SEEDER
-        self.chocked = False
-        self.interested = False
+        self.chocked = 0
+        self.interested = 0
         if max_download_rate:
             self.max_download_rate = max_download_rate
         else:
@@ -57,11 +47,8 @@ class Peer(Client, Server):
 
         self.resource = None
         self.swarm = None
-
         # Queue used to hold messages for main message thread to handle
-        self.peer_handle_queue = queue.Queue()
-        # Queue used to hold messages for server to broadcast to its clients
-        self.peer_message_queue = queue.Queue()
+        self.tracker_message_queue = queue.Queue()
 
     def start(self, torrent_path):
         """
@@ -75,7 +62,7 @@ class Peer(Client, Server):
 
         self.connect_to_swarm(self.swarm)
 
-        self.listen(self.handle_client)
+        self.listen(self.handle_client) # ' become a server.'
 
     def connect_to_tracker(self, ip_address, port, resource_name):
         """
@@ -110,8 +97,68 @@ class Peer(Client, Server):
         # MRO pulls from client because invalid function signature for server
         
         res = self.tracker_client.receive()
+
+        # start new thread to constantly poll tracker for new connections and connecting them?
+        threading.Thread(target=self.handle_tracker_swarm_updates, args=()).start()
+        # start new thread to send message to tracker
+        threading.Thread(target=self.handle_tracker_messaging, args=()).start()
         
         return res
+
+    def handle_tracker_messaging(self):
+        """
+        Singleton thread that sends message over self.tracker_clients 
+        """
+        while True:
+            try:
+                with self.MESSAGE_QUEUE_LOCK:
+                    # grabs message from queue
+                    message = self.tracker_message_queue.get(block=False)
+                self.tracker_client.send(message)
+
+                res = self.tracker_client.receive()
+
+                if isinstance(res, Swarm): # if was a 'get_swarm' call, 
+                    self.swarm = res
+                    for new_peer in self.swarm.peers:
+                        is_new = True
+                        for peer in self.peer_clients:
+                            # if already in peers list, update status
+                            if peer[0][2] == new_peer[2]: # if peer_ids match
+                                # update peer's status
+                                peer[0][3] = new_peer[3]
+                                is_new = False
+                                break
+                        # # if peer is new and not me
+                        if is_new and new_peer[2] != self.peer_id:
+                            # create new connection w/ peer and add to peer_clients.
+                            self._connect_to_peer(new_peer)
+            except queue.Empty:
+                # if queue is empty, wait
+                time.sleep(0.50)
+
+    def handle_tracker_swarm_updates(self):
+        """
+        This thread handles polling the tracker every 15 seconds for new updates to the swarm
+        Function then creates connection to the new peers.
+        It also updates the peer statuses in the peer's list of peer_clients
+        """
+        while self.status != self.SEEDER:
+            time.sleep(3)
+            # ask tracker for swarm object
+            with self.MESSAGE_QUEUE_LOCK:
+                self.tracker_message_queue.put({"option": "get_swarm", "message": self.resource.name()})
+
+    def _connect_to_peer(self, peer):
+        print(f"Connecting to Peer_id: {peer[2]}")
+        # connect to peer
+        client = Client()
+        client.connect(peer[0], peer[1])
+        # adds peer info and connection socket 
+        self.peer_clients.append([peer, client])
+        # employ a new thread to talk to each peer...
+        thread_c = threading.Thread(target=self.handle_peer, args=(client, peer))
+        thread_c.start()
 
     def connect_to_swarm(self, swarm):
         """
@@ -126,41 +173,121 @@ class Peer(Client, Server):
         :param swarm: Swarm object returned from the tracker
         :return: VOID
         """
+        self.interested = 1
         for peer in swarm.peers:
-            #TODO Wrap in try catch
             if peer[2] != self.peer_id: # if not me
-                print(f"Connecting to {peer}")
-                # connect to peer
-                client = Client()
-                client.connect(peer[0], peer[1])
-                # adds peer info and connection socket 
-                self.peer_clients.append([peer, client])
-                # start new thread?....
-                # employ a new thread to talk to each peer...
-                thread_c = threading.Thread(target=self.handle_peer, args=(client_sock, peer))
-                thread_c.start()
+                self._connect_to_peer(peer)
 
-
-    def handle_client(self):
+    def handle_client(self, client_sock, client_addr):
         """
         Function to handle client connections
         """
         while True:
-            pass
+            req = self.receive(client_sock)
+            message = Message()
+            message.chocked = self.chocked
+            message.bitfield = self.resource.completed
+            if req.interested != 1:
+                self.send(client_sock,message)
+                if req.keep_alive != 1: 
+                    break
+                continue
+            #
+            if req.request is None:
+                # must have set the cancel field instead.
+                # will be last message, set keep_alive to 0
+                message.keep_alive = 1
+                requested_piece_index = req.cancel["index"]
+                requested_block_index = req.cancel["block_id"]
+            else:
+                requested_piece_index = req.request["index"]
+                requested_block_index = req.request["block_id"]
+            # NOTE: THIS IS ASSUMING THAT SENDER ASKED FOR SOMETHING I HAVE
+            piece = self.resource.get_piece(requested_piece_index)
+            block = piece.blocks[requested_block_index]
 
-    def handle_peer(self, client_sock, peer):
+            message.piece["index"] = requested_piece_index
+            message.piece["block_id"] = requested_block_index
+            message.piece["block"] = block.data
+            print(f"Sending Piece: {requested_piece_index} Block: {requested_block_index} to IP {client_addr[0]}")
+            self.send(client_sock,message)
+
+    def handle_peer(self, client, peer):
         """
         Threaded function to handle connection to peer, note this connection
         is only useful if self is not a seeder
         """
+        # send initial info
+        message = Message()
+        message.interested = self.interested
+        message.bitfield = self.resource.completed
+        message.keep_alive = 1
+        client.send(message)
+
         # while peer is not a seeder
         while self.status != self.SEEDER:
-            # send a message
-            # send initial info
+            res = client.receive() #.receive()
+            # see what they have
+            if res.chocked == 1:
+                # if chock, wait a bit, then send message again
+                time.sleep(2)
+                client.send(message)
+                continue; # go back to the start
+            # if not chocked!
+            for i in range(len(res.bitfield)):
+                if res.bitfield[i] == 1 and self.resource.completed[i] == 0:
+                    # if he has and I don't
+                    self._get_piece(client, peer, i)
+            
+            # check if have everything
+            done = True
+            print("Completed: ", self.resource.completed)
+            for i in range(len(self.resource.completed)):
+                if self.resource.completed[i] != 1:
+                    done = False
+                    break
+            if done:
+                self.change_role(self.SEEDER)
+                self.resource.save_torrent()
+                break;
+
+    def _get_piece(self, client, peer, index):
+        with self.BITFIELD_LOCK: # make sure piece is not being satisfied
+            if self.resource.completed[index] != 0:
+                return ;
+            else:
+                self.resource.completed[index] = 0.5
+        piece = self.resource.get_piece(index)
+        # for each piece in block
+        for i in range(len(piece.blocks)):
+            # send request
             message = Message()
             message.interested = 1
-            
-            # see if peer is unchocked...
+            message.keep_alive = 1
+            message.bitfield = self.resource.completed
+            if i == len(piece.blocks) - 1: # if last block
+                message.request = None
+                message.cancel["index"] = index
+                message.cancel["block_id"] = i
+            else:
+                message.request["index"] = index
+                message.request["block_id"] = i
+            client.send(message)
+            # get response
+            res = client.receive() #.receive()
+            piece.blocks[i].fill_data(res.piece["block"])
+            print(f"Got Piece: {index} Block: {i}")
+        # when done, set completed to 1
+
+        # See if hash matches 
+        if not piece.set_to_complete(self.resource.get_piece_hash(index)):
+            # if not
+            with self.BITFIELD_LOCK: # make sure piece is not being satisfied
+                self.resource.completed[index] = 0
+            return False
+        with self.BITFIELD_LOCK:
+            self.resource.completed[index] = 1
+        return True
 
     def upload_rate(self):
         """
@@ -192,7 +319,6 @@ class Peer(Client, Server):
         :return: the metainfo
         """
         # should resource_id be a random number?...
-        # try:
         ma_map = Resource.parse_metainfo(torrent_path)
 
         resource = Resource(resource_id=ma_map["file_name"],file_path=ma_map["path"],file_len=ma_map["file_len"], piece_len=ma_map["piece_len"], pieces_hash=ma_map["pieces"], seed = seeder)
@@ -200,15 +326,6 @@ class Peer(Client, Server):
         resource.add_tracker(ma_map["tracker_ip_address"], ma_map["tracker_port"])
 
         return resource
-
-        # except FileNotFoundError:
-        #     print(f"File: {torrent_path} not found")
-        # except Exception as e:
-        #     print(e)
-        # logger.log("Peer", "Something went wrong getting metainfo")
-        
-        # raise Exception(f"Error getting metainfo from {torrent_path}")
-
 
     def change_role(self, new_role):
         """
@@ -221,40 +338,20 @@ class Peer(Client, Server):
         :param new_role: use class constants: PEER, SEEDER or LEECHER
         :return: VOID
         """
-        pass
-
-    def send_message(self, block, start_index = -1, end_index = -1):
-        """
-        TODO: implement this method
-        (1) Create a message object from the message class
-        (2) Set all the properties of the message object
-        (3) If the start index and end_index are not negative
-            then, that means that the block needs to be sent
-            in parts. implement that situations too.
-        (4) Don't forget to check for exceptions with try-catch
-            before sending messages. Also, don't forget to
-            serialize the message object before being sent
-        :param block: a block object from the Block class
-        :param start_index: the start index (if any) of the data being sent
-        :param end_index: the end index of the data being sent
-        :return: VOID
-        """
-        pass
-
-    def receive_message(self):
-        """
-        TODO: implement this method
-        (1) receive the message
-        (2) inspect the message (i.e does it have payload)
-        (4) If this was the last block of a piece, then you need
-            to compare the piece with the sha1 from the torrent file
-            if is the same hash, then you have a complete piece. So, set
-            the piece object related to that piece to completed.
-        (5) Save the piece data in the downloads file.
-        (6) Start sharing the piece with other peers.
-        :return: VOID
-        """
-        pass
+        self.status = new_role
+        name = ""
+        if new_role == self.SEEDER:
+            name = "SEEDER"
+        elif new_role == self.LEECHER:
+            name = "LEECHER"
+        else:
+            name = "PEER"
+        print("Status:", name)
+        with self.MESSAGE_QUEUE_LOCK:
+            self.tracker_message_queue.put({"option": "change_peer_status", "message": {
+            "peer":[self.host_ip, self.host_port, self.peer_id, self.status],  # key identifying features for peer
+            "resource_id": self.resource.name()
+        }})
 
     def get_top_four_peers(self):
         """
@@ -278,48 +375,3 @@ class Peer(Client, Server):
         :return: true if the piece is verified and is not corrupted, otherwisem, return false
         """
         return False
-
-
-
-    def is_chocked(self):
-        """
-        Already implemented
-        :return:
-        """
-        return self.chocked
-
-    def is_interested(self):
-        """
-        Already implemented
-        :return:
-        """
-        return self.interested
-
-    def chocked(self):
-        """
-        Already implemented
-        :return: VOID
-        """
-        self.chocked = True
-
-    def unchocked(self):
-        """
-        Already implemented
-        :return: VOID
-        """
-        self.chocked = False
-
-    def interested(self):
-        """
-        Already implemented
-        :return: VOID
-        """
-        self.interested = True
-
-    def not_interested(self):
-        """
-
-        Already implemented
-        :return: VOID
-        """
-        self.interested = False

@@ -18,7 +18,7 @@ def network_exception_handler(func):
         try:
             return func(*args, **kwargs)
         except socket.error as sock_error:
-            print(f"An HTTPError occurred: {sock_error}")
+            print(f"A socket error occurred: {sock_error}")
         except ServerDisconnect:
             print("Server has disconnected")
         except Exception as e:
@@ -52,6 +52,7 @@ class Client:
         """
         try:
             # make connection
+            print(f"Connecting to {ip_address}, {port}")
             self.client_socket.connect((ip_address, int(port)))
         except OSError:
             # socket already connected

@@ -44,7 +44,6 @@ class Tracker(Server):
             self.swarms = self.current_swarms_or_new(file_path)
         else: 
             self.swarms = self.current_swarms_or_new()
-        print("Current swarms list: ", self.swarms)
 
     def current_swarms_or_new(self, file_path = "./tmp/swarms.pickle"):
         """
@@ -114,7 +113,7 @@ class Tracker(Server):
         for swarm in self.swarms:
             if swarm.resource_id == resource_id:
                 del swarm
-                self.make_persistent()
+                # self.make_persistent()
                 return True
         return False
 
@@ -146,8 +145,6 @@ class Tracker(Server):
             swarm = Swarm(resource_id)
             self.add_swarm(swarm)
             
-        print(peer)
-        print(swarm)
         # avoid dups
         if not self.peer_in_swarm(peer, swarm):
             if swarm.size() < self.MAX_PEERS:
@@ -156,7 +153,7 @@ class Tracker(Server):
                 # too many peers, 
                 print(f"Too many peers in {swarm.resource_id}")
                 return None
-        self.make_persistent()
+        # self.make_persistent()
         return True
         # return False # error
 
@@ -174,7 +171,7 @@ class Tracker(Server):
                 break
         return ret
 
-    def change_peer_status(self, peer, resource_id):
+    def change_peer_status(self, update_peer, resource_id):
         """
         TODO: implement this method
         When a peers in a swarm report a change of status
@@ -186,13 +183,15 @@ class Tracker(Server):
         """
         swarm = self._get_swarm_object(resource_id) # TODO
 
-        # if swarm:
-        #     swarm.(peer)
-        #     return True
-        # return False
-        # ???
-        self.make_persistent()
-        return False
+        if swarm is None:
+            return False
+        
+        for peer in swarm.peers:
+            if peer[2] == update_peer[2]: # if peer_ids match
+                peer[3] = update_peer[3] # update its status
+                break
+        # self.make_persistent()
+        return True
 
     def send_peers(self, peer_socket, resource_id):
         """
@@ -205,26 +204,25 @@ class Tracker(Server):
                sharing this resource
         :return: VOID
         """
-        print(f"Sending {resource_id} swarm information")
+        # print(f"Sending {resource_id} swarm information")
         swarm = self._get_swarm_object(resource_id)
         # if swarm DNE, create it
         # if not swarm:
         #     swarm = Swarm(resource_id)
         #     self.add_swarm(swarm)
         # self.add_peer_to_swarm((), resource_id, swarm)
-        print(swarm)
         self.send(peer_socket, swarm)
 
     def make_persistent(self, file_path="./tmp/swarms.pickle"):
         """
         Given a set ???
         """
-        # with self.SWARM_LOCK:
-        #     with open(file_path, "wb") as file_handle:
-        #         pickle.dump(self.swarms, file_handle, protocol=pickle.HIGHEST_PROTOCOL)
+        with self.SWARM_LOCK:
+            with open(file_path, "wb") as file_handle:
+                pickle.dump(self.swarms, file_handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 if __name__ == "__main__":
     tracker = Tracker()
-    print(tracker.host_ip)
-    print(tracker.host_port)
+    print("Tracker IP: ", tracker.host_ip)
+    print("Tracker Port:",tracker.host_port)
     tracker.listen(tracker.handle_client_logic)

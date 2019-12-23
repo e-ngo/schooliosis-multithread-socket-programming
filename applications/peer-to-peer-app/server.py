@@ -7,6 +7,7 @@ assignment #1.
 import socket
 import pickle
 import threading
+from swarm import Swarm
 import os
 
 class ClientDisconnect(Exception):
@@ -69,7 +70,11 @@ class Server(object):
         client_sock, addr = self.server_socket.accept()
         self.clients[addr[1]] = client_sock
         print(f"Client {addr} has connected!")
-        thread = threading.Thread(target=self.threaded_client, args=(client_sock, addr, func))
+        if func:
+            thread = threading.Thread(target=self.threaded_client, args=(client_sock, addr, func))
+        else:
+            thread = threading.Thread(target=self.threaded_client, args=(client_sock, addr))
+            
         thread.start()
 
     def receive(self, client_sock, memory_allocation_size = None):

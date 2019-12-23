@@ -28,7 +28,7 @@ def remove_tags(string):
     if ender == -1:
         return string # nothing to remove here...
 
-    return string[0: starter] + string[ender: ]
+    return string[0: starter] + string[ender+1: ]
 
 class Resource(object):
     """
@@ -50,6 +50,7 @@ class Resource(object):
         self.completed = []  # the pieces that are already completed
         # self.file_name = file_name
         self.seed = seed
+        self.num_pieces = math.ceil(self.len / self.max_piece_size)
         self.expected_pieces_hash = self.parse_hex_string_to_array(pieces_hash)
         self._create_pieces() # creates the file's pieces
 
@@ -64,8 +65,13 @@ class Resource(object):
         hashes[0] = remove_tags(hashes[0])
         hashes[-1] = remove_tags(hashes[-1])
 
-        return hashes
+        piece_hashes = []
 
+        for i in range(self.num_pieces):
+            sub = hashes[i*20: (i+1)*20]
+            sub = "".join(sub)
+            piece_hashes.append(sub)
+        return piece_hashes
 
     def add_tracker(self, ip_address, port):
         """
@@ -85,12 +91,12 @@ class Resource(object):
         """
         return self.trackers
 
-    def len(self):
-        """
-        Already implementeted
-        :return: the len of the resource
-        """
-        return self.len
+    # def len(self):
+    #     """
+    #     Already implementeted
+    #     :return: the len of the resource
+    #     """
+    #     return self.len
 
     def name(self):
         """
@@ -109,17 +115,16 @@ class Resource(object):
         :return: VOID
         """
         self.pieces = [] # list of objects of pieces. (see Piece class)
-        # hash groupings (160 bits for sha1 hash), about 20 hexadecimal chars
-        num_pieces = math.ceil(self.len / self.max_piece_size)
+        # hash groupings (160 bits for sha1 hash), about 20 hexadecimal pairs
 
         if self.seed: # if not seed, data will be None
             with open(self.file_path, "rb") as seed_file:
-                for i in range(num_pieces):
+                for i in range(self.num_pieces):
                     chunk = seed_file.read(self.max_piece_size)
                     self.pieces.append(Piece(chunk, i, self.resource_id, self.max_piece_size, self.seed))
                     self.completed.append(1)
         else:
-            for i in range(num_pieces):
+            for i in range(self.num_pieces):
                 self.pieces.append(Piece(None, i, self.resource_id, self.max_piece_size))
                 self.completed.append(0)
 
@@ -130,6 +135,9 @@ class Resource(object):
         :return: the piece requested
         """
         return self.pieces[index]
+    
+    def get_piece_hash(self, index):
+        return self.expected_pieces_hash[index]
 
     def sha1_hashes(self):
         """
@@ -188,13 +196,12 @@ class Resource(object):
         After all data sent, all hashes checked, save file to storage to given file_path
         """
         file_path = file_path or self.file_path # should be self.file_path
+        print("Saving to", file_path)
         once = False
         with open(file_path , "wb") as fw:
             for piece in self.pieces:
                 for block in piece.blocks:
-                    # print(block.piece_id, block.block_id, block.data)
                     if not once:
-                        print(f"Piece num {len(self.pieces)} block num {len(piece.blocks)} Total size {self.len}")
                         once = True
                     fw.write(block.data)
 
@@ -233,14 +240,11 @@ class Piece(object):
         block_len = math.ceil(self.max_piece_size / max_size_in_bytes)
 
         for i in range(block_len):
-            print(f"MPS: {self.max_piece_size}, MSIB: {max_size_in_bytes}")
             block = Block(i, self.piece_id, self.resource_id)
             if self.data:
                 start = i * max_size_in_bytes
                 end = min((i + 1) * max_size_in_bytes , self.max_piece_size)
                 data = self.data[start:end]
-                print(f"Start: {start}, End: {end}")
-                print(f"Data: {data}")
                 block.fill_data(data)
             self.blocks.append(block)
         return self.blocks
@@ -256,10 +260,19 @@ class Piece(object):
         :return: the hexadecimal representation of
         the hash
         """
-        if not data:
-            data = self.data
+        data = self.data
         if not data:
             return None
+        if isinstance(data, str):
+            data = data.encode() # 
+        hash_object = hashlib.sha1(data)
+        return hash_object.hexdigest()
+    
+    def _compute_hash(self):
+        data = b''
+        for block in self.blocks:
+            data += block.get_data()
+            # data = b''.join([data, block.get_data()])
         if isinstance(data, str):
             data = data.encode() # 
         hash_object = hashlib.sha1(data)
@@ -303,12 +316,19 @@ class Piece(object):
         """
         return self.completed
 
-    def set_to_complete(self):
+    def set_to_complete(self, hash_ref):
         """
-        Already implemented
+        :hash_ref: hash piece to compare to 
         :return:
         """
-        self.completed = True
+        # checks if hash is fine...
+        old_hash = self._compute_hash()
+        if old_hash.upper() == hash_ref:
+            self.completed = True
+            return True
+        else:
+            return False
+            
 
 
 class Block(object):

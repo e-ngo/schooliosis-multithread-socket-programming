@@ -3,7 +3,7 @@
 This file implements a message class for P2P BitTorrent Message Protocol used by the Peer protocol.
 """
 
-class Message(object):
+class Message:
     """
     Note that for this assignment you are only required to create a basic implementation of the message protocol
     like the one described above. More complicated options of this protocol are out of the scope of csc645.
@@ -19,7 +19,7 @@ class Message(object):
         # 1 interested, 0 not interested
         # When a peer is connected to a swarm, in order to start downloading data, the sender must be unchocked and the
         # receiver must be interested.
-        self.interesed = 0
+        self.interested = 0
 
         # number of pieces downloaded so far. This is optional and dangerious because a malicious peer may use this
         # info to create a security treat in the swarm.
@@ -32,23 +32,23 @@ class Message(object):
 
         # request to the sender
         # index: integer specifying the zero-based piece index
-        # begin: integer specifying the zero-based byte offset within the piece
-        # length: integer specifying the requested length.
-        self.request = {"index": 0, "begin": 0, "length": 0}
+        # begin: piece number
+        # length: block number
+        self.request = {"index": 0, "block_id": 0}
 
         # send block to another peer/s in the swarm
         # index: integer specifying the zero-based piece index
-        # begin: integer specifying the zero-based byte offset within the piece
+        # begin: piece number
         # block: block of data, which is a subset of the piece specified by index.
-        self.piece = {"index": 0, "begin": 0, "block": []}
+        self.piece = {"index": 0, "block_id": 0, "block": []}
 
         # Payload is similar to the request but is send to request the last block from a peer to complete a piece.
-        self.cancel = {"index": 0, "begin": 0, "length": 0}
+        self.cancel = {"index": 0, "block_id": 0}
 
         # A keep alive message must be sent in order to keep the connection alive. If keep_alive is set to 0, and the
         # message contains payload, the reciever will accept the payload (if not chocked) and inmediatly will close
         # the connection with the sender (similar to HTTP:1.0/TCP non-persistent connections)
         self.keep_alive = 0
 
-        # instead of relying on tracker, message protocol supports updating statuses of peers
-        self.status = 0
+        # # instead of relying on tracker, message protocol supports updating statuses of peers
+        # self.status = 0
